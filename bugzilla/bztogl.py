@@ -28,6 +28,13 @@ DESC_TEMPLATE = """*Submitted by {submitter}*
 {body}
 """
 
+MIGR_TEMPLATE = """This is an automatic message.
+
+This bug has been migrated to GNOME's GitLab instance and has been closed for further activity.
+
+You can follow further activity on this bug here: {}.
+"""
+
 class Target:
     def __init__ (self, token, product, target_product=None):
         self.token = token
@@ -72,6 +79,9 @@ def initial_comment_to_issue_description(bug, text, user_cache):
                                 asigned_to=bug.assigned_to,
                                 id=bug.id,
                                 body=text)
+
+def bugzilla_migration_closing_comment (gl_issue):
+    return MIGR_TEMPLATE.format(gl_issue.web_url)
 
 def attachments_to_comments():
     pass
@@ -141,8 +151,15 @@ def processbug (bgo, target, bzbug):
     issue.labels = ['bugzilla']
     issue.save()
 
-    #TODO: Close/close comment
-    #TODO: Add ability to resume if something goes wrong (research gitlab/phab metadata)
+    if bzbug.bugzilla.logged_in:
+        bz = bzbug.bugzilla
+        print("Adding a comment in bugzilla and closing the bug there")
+        #TODO: Create a resolution for this specific case? MIGRATED or FWDED?
+        bz.update_bugs(bzbug.bug_id,
+                       bz.build_update(comment=bugzilla_migration_closing_comment (issue),
+                                       status='RESOLVED',
+                                       resolution='OBSOLETE'))
+
 
 def options():
     parser = argparse.ArgumentParser(description="Bugzilla migration helper for bugzilla.gnome.org products")
@@ -176,6 +193,7 @@ def main():
     if args.bz_user and args.bz_password:
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user, args.bz_password)
     else:
+        print ("WARNING: Bugzilla credentials were not provided, BZ bugs won't be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org")
 
     query = bgo.build_query (product=args.product)
