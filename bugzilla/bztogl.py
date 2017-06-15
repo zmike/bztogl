@@ -21,10 +21,9 @@ import argparse
 import bugzilla
 import gitlab
 
-DESC_TEMPLATE = """*Submitted by {submitter}*
-*Assigned to {asigned_to}*
-*[Link to original bug](https://bugzilla.gnome.org/show_bug.cgi?id={id})*
-
+DESC_TEMPLATE = """*Submitted by {submitter}*  
+*Assigned to {asigned_to}*  
+*[Link to original bug](https://bugzilla.gnome.org/show_bug.cgi?id={id})*  
 ## Description
 {body}
 """
@@ -126,7 +125,7 @@ def processbug (bgo, target, bzbug):
 
     user_cache = populate_user_cache (bgo, target, user_cache)
 
-    summary = "[BGO] {}".format(bzbug.summary)
+    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
 
     #TODO: Close/close comment
