@@ -51,6 +51,11 @@ class GitLab(Target):
     def get_project(self):
         return self.gl.projects.get(self.target_product)
 
+    def create_issue(self, id, summary, description):
+        return self.get_project().issues.create({'title': summary,
+            'description': description,
+            'labels': 'bugzillacreate'})
+
 def initial_comment_to_issue_description(bug, text, user_cache):
     #bzbug.id
     #bzbug.summary
@@ -127,6 +132,14 @@ def processbug (bgo, target, bzbug):
 
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
+
+    issue = target.create_issue (bzbug.id, summary, description)
+
+    for comment in comments:
+        issue.notes.create({'body': "*Submitted by {}  \n{}".format (comment['author'], comment['text'])})
+
+    issue.labels = ['bugzilla']
+    issue.save()
 
     #TODO: Close/close comment
     #TODO: Add ability to resume if something goes wrong (research gitlab/phab metadata)
