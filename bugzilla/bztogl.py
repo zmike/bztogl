@@ -173,7 +173,11 @@ def main():
         sys.exit(1)
 
     print ("Connecting to bugzilla.gnome.org")
-    bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org")
+    if args.bz_user and args.bz_password:
+        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user, args.bz_password)
+    else:
+        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org")
+
     query = bgo.build_query (product=args.product)
     query["status"] = ["NEW", "ASSIGNED", "REOPENED", "NEEDINFO", "UNCONFIRMED"]
     print ("Querying for open bugs for the '%s' product" % args.product)
