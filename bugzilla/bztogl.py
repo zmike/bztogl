@@ -21,18 +21,18 @@ import argparse
 import bugzilla
 import gitlab
 
-DESC_TEMPLATE = """*Submitted by {submitter}*  
-*Assigned to {asigned_to}*  
-*[Link to original bug](https://bugzilla.gnome.org/show_bug.cgi?id={id})*  
+DESC_TEMPLATE = """## Submitted by {submitter}  
+**Assigned to {asigned_to}**  
+**[Link to original bug (#{id})](https://bugzilla.gnome.org/show_bug.cgi?id={id})**  
 ## Description
 {body}
 """
 
-MIGR_TEMPLATE = """This is an automatic message.
+MIGR_TEMPLATE = """-- GitLab Migration Automatic Message --
 
-This bug has been migrated to GNOME's GitLab instance and has been closed for further activity.
+This bug has been migrated to GNOME's GitLab instance and has been closed from further activity.
 
-You can follow further activity on this bug here: {}.
+You can subscribe and participate further through the new bug through this link to our GitLab instance: {}.
 """
 
 class Target:
@@ -63,31 +63,15 @@ class GitLab(Target):
             'description': description,
             'labels': 'bugzillacreate'})
 
-def initial_comment_to_issue_description(bug, text, user_cache):
-    #bzbug.id
-    #bzbug.summary
-    #bzbug.creator
-    #bzbug.creationtime
-    #bzbug.target_milestone
-    #bzbug.blocks
-    #bzbug.assigned_to
+def body_to_markdown_quote (body):
+    return ">>>\n{}\n>>>  \n".format(body)
 
-    if not text:
-        text = ""
-
-    return DESC_TEMPLATE.format(submitter=user_cache[bug.creator],
-                                asigned_to=bug.assigned_to,
-                                id=bug.id,
-                                body=text)
-
-def bugzilla_migration_closing_comment (gl_issue):
-    return MIGR_TEMPLATE.format(gl_issue.web_url)
-
-def attachments_to_comments():
-    pass
-
-def convert_bug_comment_stream():
-    pass
+def id_to_name (bzid, user_cache):
+    if bzid.endswith("gnome.bugs"):
+        return bzid
+    name = user_cache[bzid]
+    result = "{} <<{}..@..{}>>".format(name, bzid[:3], bzid[-3:])
+    return result
 
 def populate_user_cache(bgo, target, user_cache):
     real_names = {}
@@ -95,6 +79,18 @@ def populate_user_cache(bgo, target, user_cache):
         real_names[bzu.email] = bzu.real_name
 
     return real_names
+
+def initial_comment_to_issue_description(bug, text, user_cache):
+    if not text:
+        text = ""
+
+    return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
+                                asigned_to=id_to_name(bug.assigned_to, user_cache),
+                                id=bug.id,
+                                body=body_to_markdown_quote(text))
+
+def bugzilla_migration_closing_comment (gl_issue):
+    return MIGR_TEMPLATE.format(gl_issue.web_url)
 
 def processbug (bgo, target, bzbug):
     print ("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
@@ -118,9 +114,22 @@ def processbug (bgo, target, bzbug):
                 {"ids": [self.bug_id], "exclude_fields": ["data"]})
             attachments = rawret["bugs"][str(self.bug_id)]
 
-        return attachments
+        index = {}
+        for at in attachments:
+            atid = at.pop('id')
+            index[atid] = at
+        return index
 
-    atts = get_attachments_metadata (bzbug)
+    def gitlab_upload_file (target, filename, f):
+        url = target.GITLABURL + "api/v3/projects/{}/uploads".format(target.get_project().id)
+        target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
+        ret = target.gl.session.post (url,
+                files={'file': (filename, f)})
+        if ret.status_code != 201:
+            raise Exception("Could not upload file: {}".format(ret.text))
+        return ret.json ()
+
+    attachment_metadata = get_attachments_metadata (bzbug)
     comments = bzbug.getcomments()
 
     firstcomment = None if len(comments) < 1 else comments[0]
@@ -129,14 +138,11 @@ def processbug (bgo, target, bzbug):
         desctext = firstcomment['text']
         comments = comments[1:]
 
-    events = comments + atts
-    events = sorted (events, key=lambda x: x['creation_time'])
-
     user_cache = {}
 
     user_cache[bzbug.creator] = None
-    for e in events:
-        user_cache[e['creator']] = None
+    for comment in comments:
+        user_cache[comment['creator']] = None
 
     user_cache = populate_user_cache (bgo, target, user_cache)
 
@@ -145,11 +151,28 @@ def processbug (bgo, target, bzbug):
 
     issue = target.create_issue (bzbug.id, summary, description)
 
+    print ("Migrating comments: ")
+    c = 0
     for comment in comments:
-        issue.notes.create({'body': "*Submitted by {}  \n{}".format (comment['author'], comment['text'])})
+        c = c + 1
+        print("  [{}/{}]".format(c, len(comments)))
+        comment_attachment = ""
+        if 'attachment_id' in comment:
+            atid = comment['attachment_id']
+
+            print ("    Attachment {} found, migrating".format(attachment_metadata[atid]['file_name']))
+            attfile = bgo.openattachment(atid)
+            ret = gitlab_upload_file(target, attachment_metadata[atid]['file_name'], attfile)
+            comment_attachment = "  \n**Attachment ({}):**  \n{}".format (ret["alt"], ret['markdown'])
+
+        issue.notes.create({'body': "## Submitted by {}\n{}  \n{}".format (id_to_name(comment['author'], user_cache),
+            body_to_markdown_quote(comment['text']),
+            comment_attachment)})
 
     issue.labels = ['bugzilla']
     issue.save()
+
+    print("New GitLab issue created from bugzilla bug {}: {}".format(bzbug.id, issue.web_url))
 
     if bzbug.bugzilla.logged_in:
         bz = bzbug.bugzilla
