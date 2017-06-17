@@ -64,12 +64,12 @@ class GitLab(Target):
             'labels': 'bugzillacreate'})
 
 def body_to_markdown_quote (body):
-    return ">>>\n{}\n>>>  \n".format(body)
+    return ">>>\n{}\n>>>  \n".format(body).encode('utf-8')
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
         return bzid
-    name = user_cache[bzid]
+    name = user_cache[bzid].encode('utf-8')
     result = "{} <<{}..@..{}>>".format(name, bzid[:3], bzid[-3:])
     return result
 
