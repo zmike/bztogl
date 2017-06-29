@@ -64,7 +64,7 @@ class GitLab(Target):
             'labels': 'bugzillacreate'})
 
 def body_to_markdown_quote (body):
-    return ">>>\n{}\n>>>  \n".format(body).encode('utf-8')
+    return ">>>\n{}\n>>>  \n".format(body.encode('utf-8'))
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
@@ -93,7 +93,7 @@ def bugzilla_migration_closing_comment (gl_issue):
     return MIGR_TEMPLATE.format(gl_issue.web_url)
 
 def processbug (bgo, target, bzbug):
-    print ("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
+    print ("Processing bug #%d: %s" % (bzbug.id, bzbug.summary.encode('utf-8')))
     #bzbug.id
     #bzbug.summary
     #bzbug.creator
@@ -146,7 +146,7 @@ def processbug (bgo, target, bzbug):
 
     user_cache = populate_user_cache (bgo, target, user_cache)
 
-    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
+    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
 
     issue = target.create_issue (bzbug.id, summary, description)
