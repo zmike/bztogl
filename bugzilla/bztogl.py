@@ -45,7 +45,7 @@ class Target:
             self.target_product = "gnome/" + product
 
 class GitLab(Target):
-    GITLABURL = "https://gitlab.gnome.org/"
+    GITLABURL = "https://gitlab-test.gnome.org/"
 
     def __init__ (self, token, product, target_product=None):
         Target.__init__(self, token, product, target_product)
@@ -201,6 +201,7 @@ def processbug (bgo, target, bzbug):
 
 def options():
     parser = argparse.ArgumentParser(description="Bugzilla migration helper for bugzilla.gnome.org products")
+    parser.add_argument('--production', help="target production instead of testing")
     parser.add_argument('--target', help="target mode (gitlab or phabricator)", choices=['gitlab', 'phab'], required=True)
     parser.add_argument('--token', help="gitlab/phabricator token API", required=True)
     parser.add_argument('--product', help="bugzilla product name", required=True)
@@ -215,6 +216,8 @@ def main():
 
     if args.target == "gitlab":
         target = GitLab (args.token, args.product, args.target_product)
+        if args.production:
+            target.GITLABURL = "https://gitlab.gnome.org/"
     elif args.target == "phab":
         print("Phabricator target super not implemented")
         sys.exit(1)
