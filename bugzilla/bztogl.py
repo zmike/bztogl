@@ -71,7 +71,7 @@ class GitLab(Target):
         return None
 
 def body_to_markdown_quote (body):
-    return ">>>\n{}\n>>>  \n".format(body.encode('utf-8'))
+    return ">>>\n{}\n>>>\n".format(body.encode('utf-8'))
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
