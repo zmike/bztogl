@@ -61,7 +61,7 @@ class GitLab(Target):
     def create_issue(self, id, summary, description, creation_time):
         return self.get_project().issues.create({'title': summary,
             'description': description,
-            'labels': 'bugzillacreate',
+            'labels': 'bugzilla',
             'created_at': creation_time})
 
 def body_to_markdown_quote (body):
@@ -177,7 +177,6 @@ def processbug (bgo, target, bzbug):
             'created_at': str(comment['creation_time'])
         })
 
-    issue.labels = ['bugzilla']
     issue.save()
 
     print("New GitLab issue created from bugzilla bug {}: {}".format(bzbug.id, issue.web_url))
