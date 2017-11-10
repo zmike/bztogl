@@ -58,10 +58,11 @@ class GitLab(Target):
     def get_project(self):
         return self.gl.projects.get(self.target_product)
 
-    def create_issue(self, id, summary, description):
+    def create_issue(self, id, summary, description, creation_time):
         return self.get_project().issues.create({'title': summary,
             'description': description,
-            'labels': 'bugzillacreate'})
+            'labels': 'bugzillacreate',
+            'created_at': creation_time})
 
 def body_to_markdown_quote (body):
     return ">>>\n{}\n>>>  \n".format(body.encode('utf-8'))
@@ -154,7 +155,7 @@ def processbug (bgo, target, bzbug):
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
 
-    issue = target.create_issue (bzbug.id, summary, description)
+    issue = target.create_issue (bzbug.id, summary, description, str(bzbug.creation_time))
 
     print ("Migrating comments: ")
     c = 0
@@ -172,7 +173,9 @@ def processbug (bgo, target, bzbug):
 
         issue.notes.create({'body': "## Submitted by {}\n{}  \n{}".format (id_to_name(comment['author'], user_cache),
             body_to_markdown_quote(comment['text']),
-            comment_attachment)})
+            comment_attachment),
+            'created_at': str(comment['creation_time'])
+        })
 
     issue.labels = ['bugzilla']
     issue.save()
