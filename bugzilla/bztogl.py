@@ -22,7 +22,7 @@ import bugzilla
 import gitlab
 
 DESC_TEMPLATE = """## Submitted by {submitter}  
-**Assigned to {asigned_to}**  
+{assigned_to}
 **[Link to original bug (#{id})](https://bugzilla.gnome.org/show_bug.cgi?id={id})**  
 ## Description
 {body}
@@ -84,8 +84,13 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     if not text:
         text = ""
 
+    # Assignment of $PROJECT@gnome.bugs effectively means unassigned
+    assigned_to = ""
+    if not bug.assigned_to.endswith("gnome.bugs"):
+        assigned_to = "**Assigned to {}**  \n".format(id_to_name(bug.assigned_to, user_cache))
+
     return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
-                                asigned_to=id_to_name(bug.assigned_to, user_cache),
+                                assigned_to=assigned_to,
                                 id=bug.id,
                                 body=body_to_markdown_quote(text))
 
