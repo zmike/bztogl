@@ -22,7 +22,7 @@ import bugzilla
 import gitlab
 
 DESC_TEMPLATE = """## Submitted by {submitter}  
-**Assigned to {asigned_to}**  
+{assigned_to}
 **[Link to original bug (#{id})](https://bugzilla.gnome.org/show_bug.cgi?id={id})**  
 ## Description
 {body}
@@ -58,25 +58,34 @@ class GitLab(Target):
     def get_project(self):
         return self.gl.projects.get(self.target_product)
 
-    def create_issue(self, id, summary, description):
+    def create_issue(self, id, summary, description, creation_time):
         return self.get_project().issues.create({'title': summary,
             'description': description,
-            'labels': 'bugzillacreate'})
+            'labels': 'bugzilla',
+            'created_at': creation_time})
+
+    def find_user(self, email):
+        possible_users = self.gl.users.search(email)
+        if len(possible_users) == 1:
+            return possible_users[0]
+        return None
 
 def body_to_markdown_quote (body):
-    return ">>>\n{}\n>>>  \n".format(body.encode('utf-8'))
+    return ">>>\n{}\n>>>\n".format(body.encode('utf-8'))
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
         return bzid
-    name = user_cache[bzid].encode('utf-8')
-    result = "{} <<{}..@..{}>>".format(name, bzid[:3], bzid[-3:])
-    return result
+    return user_cache[bzid].encode('utf-8')
 
 def populate_user_cache(bgo, target, user_cache):
     real_names = {}
     for bzu in bgo.getusers(user_cache.keys()):
-        real_names[bzu.email] = bzu.real_name
+        gitlab_user = target.find_user(bzu.email)
+        if gitlab_user is not None:
+            real_names[bzu.email] = '@' + gitlab_user.username
+        else:
+            real_names[bzu.email] = bzu.real_name
 
     return real_names
 
@@ -84,8 +93,13 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     if not text:
         text = ""
 
+    # Assignment of $PROJECT@gnome.bugs effectively means unassigned
+    assigned_to = ""
+    if not bug.assigned_to.endswith("gnome.bugs"):
+        assigned_to = "**Assigned to {}**  \n".format(id_to_name(bug.assigned_to, user_cache))
+
     return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
-                                asigned_to=id_to_name(bug.assigned_to, user_cache),
+                                assigned_to=assigned_to,
                                 id=bug.id,
                                 body=body_to_markdown_quote(text))
 
@@ -149,7 +163,7 @@ def processbug (bgo, target, bzbug):
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
 
-    issue = target.create_issue (bzbug.id, summary, description)
+    issue = target.create_issue (bzbug.id, summary, description, str(bzbug.creation_time))
 
     print ("Migrating comments: ")
     c = 0
@@ -167,9 +181,10 @@ def processbug (bgo, target, bzbug):
 
         issue.notes.create({'body': "## Submitted by {}\n{}  \n{}".format (id_to_name(comment['author'], user_cache),
             body_to_markdown_quote(comment['text']),
-            comment_attachment)})
+            comment_attachment),
+            'created_at': str(comment['creation_time'])
+        })
 
-    issue.labels = ['bugzilla']
     issue.save()
 
     print("New GitLab issue created from bugzilla bug {}: {}".format(bzbug.id, issue.web_url))
