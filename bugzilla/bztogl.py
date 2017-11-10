@@ -64,20 +64,28 @@ class GitLab(Target):
             'labels': 'bugzilla',
             'created_at': creation_time})
 
+    def find_user(self, email):
+        possible_users = self.gl.users.search(email)
+        if len(possible_users) == 1:
+            return possible_users[0]
+        return None
+
 def body_to_markdown_quote (body):
     return ">>>\n{}\n>>>  \n".format(body.encode('utf-8'))
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
         return bzid
-    name = user_cache[bzid].encode('utf-8')
-    result = "{} <<{}..@..{}>>".format(name, bzid[:3], bzid[-3:])
-    return result
+    return user_cache[bzid].encode('utf-8')
 
 def populate_user_cache(bgo, target, user_cache):
     real_names = {}
     for bzu in bgo.getusers(user_cache.keys()):
-        real_names[bzu.email] = bzu.real_name
+        gitlab_user = target.find_user(bzu.email)
+        if gitlab_user is not None:
+            real_names[bzu.email] = '@' + gitlab_user.username
+        else:
+            real_names[bzu.email] = bzu.real_name
 
     return real_names
 
