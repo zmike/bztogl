@@ -143,6 +143,14 @@ def processbug (bgo, target, bzbug):
             raise Exception("Could not upload file: {}".format(ret.text))
         return ret.json ()
 
+    def migrate_attachment(comment, metadata):
+        atid = comment['attachment_id']
+
+        print ("    Attachment {} found, migrating".format(metadata[atid]['file_name']))
+        attfile = bgo.openattachment(atid)
+        ret = gitlab_upload_file(target, metadata[atid]['file_name'], attfile)
+        return "  \n**Attachment ({}):**  \n{}".format (ret["alt"], ret['markdown'])
+
     attachment_metadata = get_attachments_metadata (bzbug)
     comments = bzbug.getcomments()
 
@@ -150,6 +158,8 @@ def processbug (bgo, target, bzbug):
     desctext = None
     if firstcomment['author'] == bzbug.creator:
         desctext = firstcomment['text']
+        if 'attachment_id' in firstcomment:
+            desctext += '\n' + migrate_attachment(firstcomment, attachment_metadata)
         comments = comments[1:]
 
     user_cache = {}
@@ -172,12 +182,7 @@ def processbug (bgo, target, bzbug):
         print("  [{}/{}]".format(c, len(comments)))
         comment_attachment = ""
         if 'attachment_id' in comment:
-            atid = comment['attachment_id']
-
-            print ("    Attachment {} found, migrating".format(attachment_metadata[atid]['file_name']))
-            attfile = bgo.openattachment(atid)
-            ret = gitlab_upload_file(target, attachment_metadata[atid]['file_name'], attfile)
-            comment_attachment = "  \n**Attachment ({}):**  \n{}".format (ret["alt"], ret['markdown'])
+            comment_attachment = migrate_attachment(comment, attachment_metadata)
 
         issue.notes.create({'body': "## Submitted by {}\n{}  \n{}".format (id_to_name(comment['author'], user_cache),
             body_to_markdown_quote(comment['text']),
