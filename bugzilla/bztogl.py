@@ -92,7 +92,8 @@ def populate_user_cache(bgo, target, user_cache):
         if gitlab_user is not None:
             real_names[bzu.email] = '@' + gitlab_user.username
         elif bzu.real_name:
-            real_names[bzu.email] = bzu.real_name
+            # Heuristically remove "(not reading bugmail) or (not receiving bugmail)"
+            real_names[bzu.email] = re.sub(r' \(not .+ing bugmail\)', '', bzu.real_name)
         else:
             real_names[bzu.email] = '{}..@..{}'.format(bzu.email[:3], bzu.email[-3:])
 
