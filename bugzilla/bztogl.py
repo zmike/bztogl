@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
 import sys
 import argparse
 
@@ -70,8 +71,14 @@ class GitLab(Target):
             return possible_users[0]
         return None
 
+def autolink_markdown(text):
+    text = re.sub(r'([Bb]ug) ([0-9]+)', '[\\1 \\2](https://bugzilla.gnome.org/show_bug.cgi?id=\\2)', text)
+    # Prevent spurious links to other GitLab issues
+    text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
+    return text
+
 def body_to_markdown_quote (body):
-    return ">>>\n{}\n>>>\n".format(body.encode('utf-8'))
+    return ">>>\n{}\n>>>\n".format(autolink_markdown(body.encode('utf-8')))
 
 def id_to_name (bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
