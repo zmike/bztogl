@@ -29,6 +29,16 @@ DESC_TEMPLATE = """## Submitted by {submitter}
 {body}
 """
 
+COMMENT_TEMPLATE = """:{emoji}: **{author}** {action}:
+{body}  
+{attachment}
+"""
+
+ATTACHMENT_TEMPLATE = """  
+{obsolete}**{kind} {atid}**{obsolete}, "{summary}":  
+{markdown}
+"""
+
 MIGR_TEMPLATE = """-- GitLab Migration Automatic Message --
 
 This bug has been migrated to GNOME's GitLab instance and has been closed from further activity.
@@ -78,6 +88,8 @@ def autolink_markdown(text):
     return text
 
 def body_to_markdown_quote (body):
+    if not body:
+        return '\n'
     return ">>>\n{}\n>>>\n".format(autolink_markdown(body.encode('utf-8')))
 
 def id_to_name (bzid, user_cache):
@@ -159,7 +171,75 @@ def processbug (bgo, target, bzbug):
         print ("    Attachment {} found, migrating".format(metadata[atid]['file_name']))
         attfile = bgo.openattachment(atid)
         ret = gitlab_upload_file(target, metadata[atid]['file_name'], attfile)
-        return "  \n**Attachment ({}):**  \n{}".format (ret["alt"], ret['markdown'])
+
+        return ATTACHMENT_TEMPLATE.format(atid=atid,
+            kind='Patch' if metadata[atid]['is_patch'] else 'Attachment',
+            obsolete='~~' if metadata[atid]['is_obsolete'] else '',
+            summary=metadata[atid]['summary'],
+            markdown=ret['markdown'])
+
+    def remove_first_lines(text, numlines):
+        return '\n'.join(text.split('\n')[numlines:])
+
+    def convert_review_comments_to_markdown(text):
+        paragraphs = text.split('\n\n')
+        converted_paragraphs = []
+        for paragraph in paragraphs:
+            # Quick check if this is a diff block
+            if paragraph[:2] not in ('::', '@@'):
+                converted_paragraphs.append(paragraph)
+                continue
+
+            # Slow check if this is a diff block
+            lines = paragraph.split('\n')
+            if not all([line[0] in ':@+- ' for line in lines]):
+                converted_paragraphs.append(paragraph)
+                continue
+
+            converted_paragraphs.append('```diff\n{}\n```'.format(paragraph))
+
+        return '\n\n'.join(converted_paragraphs)
+
+    def analyze_bugzilla_comment(comment, attachment_metadata):
+        body = comment['text']
+
+        if re.match(r'Created attachment ([0-9]+)\n', body):
+            # Remove two lines of attachment description and blank line
+            body = remove_first_lines(body, 3)
+            if attachment_metadata[comment['attachment_id']]['is_patch']:
+                return 'hammer_and_wrench', 'submitted a patch', body
+            return 'paperclip', 'uploaded an attachment', body
+
+        match = re.match(r'Review of attachment ([0-9]+):\n', body)
+        if match:
+            body = remove_first_lines(body, 2)
+            body = convert_review_comments_to_markdown(body)
+            return 'mag', 'reviewed patch {}'.format(match.group(1)), body
+
+        match = re.match(r'Comment on attachment ([0-9]+)\n', body)
+        if match:
+            body = remove_first_lines(body, 3)
+
+            # git-bz will push a single commit as a comment on the patch
+            if re.match(r'Attachment [0-9]+ pushed as [0-9a-f]+ -', body):
+                return 'arrow_heading_up', 'committed a patch', body
+
+            kind = 'attachment'
+            if attachment_metadata[comment['attachment_id']]['is_patch']:
+                kind = 'patch'
+            action = 'commented on {} {}'.format(kind, match.group(1))
+            return 'speech_balloon', action, body
+
+        # git-bz pushing multiple commits is just a plain comment. Add
+        # formatting so that the lines don't run together
+        if re.match(r'Attachment [0-9]+ pushed as [0-9a-f]+ -', body):
+            body = body.replace('\n', '  \n')
+            return 'arrow_heading_up', 'committed some patches', body
+
+        if re.match(r'\*\*\* Bug [0-9]+ has been marked as a duplicate of this bug. \*\*\*', body):
+            return 'link', 'closed a related bug', body
+
+        return 'speech_balloon', 'said', body
 
     attachment_metadata = get_attachments_metadata (bzbug)
     comments = bzbug.getcomments()
@@ -194,9 +274,14 @@ def processbug (bgo, target, bzbug):
         if 'attachment_id' in comment:
             comment_attachment = migrate_attachment(comment, attachment_metadata)
 
-        issue.notes.create({'body': "## Submitted by {}\n{}  \n{}".format (id_to_name(comment['author'], user_cache),
-            body_to_markdown_quote(comment['text']),
-            comment_attachment),
+        emoji, action, body = analyze_bugzilla_comment(comment, attachment_metadata)
+        author = id_to_name(comment['author'], user_cache)
+
+        issue.notes.create({
+            'body': COMMENT_TEMPLATE.format(emoji=emoji, author=author,
+                action=action,
+                body=body_to_markdown_quote(body),
+                attachment=comment_attachment),
             'created_at': str(comment['creation_time'])
         })
 
