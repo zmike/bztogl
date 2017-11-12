@@ -9,7 +9,7 @@ class User(collections.namedtuple('User', 'email username real_name id')):
             return real_name + '`@{}`'.format(self.username)
         elif self.real_name:
             return self.real_name
-        return '{}..@..{}'.format(self.email[:3], self.email[-3:])
+        return '{}..@..{}'.format(self.email[:3], self.email[-6:])
 
 
 class UserCache:

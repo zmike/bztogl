@@ -196,7 +196,7 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     assigned_to = ""
     assignee = user_cache[bug.assigned_to]
     if assignee is not None:
-        assigned_to = "**Assigned to {}**  \n".format(assignee.display_name())
+        assigned_to = "Assigned to **{}**  \n".format(assignee.display_name())
 
     deps = ""
     if bug.depends_on:
@@ -213,7 +213,7 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
     return DESC_TEMPLATE.format(
         submitter=user_cache[bug.creator].display_name(),
-        assigned_to=assigned_to, id=bug.id, body=body_to_markdown_quote(text),
+        assigned_to=assigned_to, id=bug.id, body=autolink_markdown(text),
         dependencies=dependencies)
 
 
@@ -353,7 +353,6 @@ def processbug(bgo, target, user_cache, bzbug):
                                                   attachment_metadata)
         comments = comments[1:]
 
-    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
     description = initial_comment_to_issue_description(bzbug, desctext,
                                                        user_cache)
     labels = ['bugzilla']
@@ -367,7 +366,7 @@ def processbug(bgo, target, user_cache, bzbug):
         if kw in KEYWORD_MAP:
             labels += [KEYWORD_MAP[kw]]
 
-    issue = target.create_issue(bzbug.id, summary, description, labels,
+    issue = target.create_issue(bzbug.id, bzbug.summary, description, labels,
                                 str(bzbug.creation_time))
 
     # Assign bug to actual account if exists
