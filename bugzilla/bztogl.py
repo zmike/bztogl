@@ -265,6 +265,11 @@ def processbug (bgo, target, bzbug):
 
     issue = target.create_issue (bzbug.id, summary, description, str(bzbug.creation_time))
 
+    # Assign bug to actual account if exists
+    assignee = target.find_user(bzbug.assigned_to)
+    if assignee is not None:
+        issue.assignee_id = assignee.id
+
     print ("Migrating comments: ")
     c = 0
     for comment in comments:
