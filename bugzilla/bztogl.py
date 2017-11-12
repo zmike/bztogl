@@ -91,8 +91,10 @@ def populate_user_cache(bgo, target, user_cache):
         gitlab_user = target.find_user(bzu.email)
         if gitlab_user is not None:
             real_names[bzu.email] = '@' + gitlab_user.username
-        else:
+        elif bzu.real_name:
             real_names[bzu.email] = bzu.real_name
+        else:
+            real_names[bzu.email] = '{}..@..{}'.format(bzu.email[:3], bzu.email[-3:])
 
     return real_names
 
