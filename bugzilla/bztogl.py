@@ -276,7 +276,8 @@ def processbug (bgo, target, bzbug):
         c = c + 1
         print("  [{}/{}]".format(c, len(comments)))
         comment_attachment = ""
-        if 'attachment_id' in comment:
+        # Only migrate attachment if this is the comment where it was created
+        if 'attachment_id' in comment and comment['text'].startswith('Created attachment'):
             comment_attachment = migrate_attachment(comment, attachment_metadata)
 
         emoji, action, body = analyze_bugzilla_comment(comment, attachment_metadata)
