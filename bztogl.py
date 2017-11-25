@@ -18,6 +18,7 @@
 import re
 import sys
 import argparse
+import urllib
 
 import bugzilla
 import gitlab
@@ -160,7 +161,7 @@ def processbug (bgo, target, bzbug):
         url = target.GITLABURL + "api/v3/projects/{}/uploads".format(target.get_project().id)
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
         ret = target.gl.session.post (url,
-                files={'file': (filename, f)})
+                files={'file': (urllib.quote(filename), f)})
         if ret.status_code != 201:
             raise Exception("Could not upload file: {}".format(ret.text))
         return ret.json ()
@@ -168,9 +169,10 @@ def processbug (bgo, target, bzbug):
     def migrate_attachment(comment, metadata):
         atid = comment['attachment_id']
 
-        print ("    Attachment {} found, migrating".format(metadata[atid]['file_name']))
+        filename = metadata[atid]['file_name'].encode('utf-8')
+        print ("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
-        ret = gitlab_upload_file(target, metadata[atid]['file_name'], attfile)
+        ret = gitlab_upload_file(target, filename, attfile)
 
         return ATTACHMENT_TEMPLATE.format(atid=atid,
             kind='Patch' if metadata[atid]['is_patch'] else 'Attachment',
