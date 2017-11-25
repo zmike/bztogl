@@ -48,6 +48,10 @@ You can subscribe and participate further through the new bug through this link 
 
 NEEDINFO_LABEL = "2. Needs Information"
 
+KEYWORD_MAP = { "accessibility": "8. Accessibility",
+                "newcomers": "4. Newcomers",
+                "security": "1. Security" }
+
 class Target:
     def __init__ (self, token, product, target_product=None):
         self.token = token
@@ -267,6 +271,10 @@ def processbug (bgo, target, bzbug):
     labels = ['bugzilla']
     if bzbug.status == 'NEEDINFO':
         labels += [NEEDINFO_LABEL]
+
+    for kw in bzbug.keywords:
+        if kw in KEYWORD_MAP:
+            labels += [KEYWORD_MAP[kw]]
 
     issue = target.create_issue (bzbug.id, summary, description, labels, str(bzbug.creation_time))
 
