@@ -308,28 +308,19 @@ def processbug (bgo, target, bzbug):
 def options():
     parser = argparse.ArgumentParser(description="Bugzilla migration helper for bugzilla.gnome.org products")
     parser.add_argument('--production', help="target production instead of testing")
-    parser.add_argument('--target', help="target mode (gitlab or phabricator)", choices=['gitlab', 'phab'], required=True)
-    parser.add_argument('--token', help="gitlab/phabricator token API", required=True)
+    parser.add_argument('--token', help="gitlab token API", required=True)
     parser.add_argument('--product', help="bugzilla product name", required=True)
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
-    parser.add_argument('--target-product', help="product name for the target backend (gitlab/phab)")
+    parser.add_argument('--target-product', help="product name for gitlab")
     return parser.parse_args()
 
 def main():
-    target = None
     args = options()
 
-    if args.target == "gitlab":
-        target = GitLab (args.token, args.product, args.target_product)
-        if args.production:
-            target.GITLABURL = "https://gitlab.gnome.org/"
-    elif args.target == "phab":
-        print("Phabricator target super not implemented")
-        sys.exit(1)
-    else:
-        print("%s target support not implemented" % args.target)
-        sys.exit(1)
+    target = GitLab (args.token, args.product, args.target_product)
+    if args.production:
+        target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
     if not target.get_project():
