@@ -341,7 +341,7 @@ def main():
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user, args.bz_password)
     else:
         print ("WARNING: Bugzilla credentials were not provided, BZ bugs won't be closed and subscribers won't notice the migration")
-        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org")
+        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
     query = bgo.build_query (product=args.product)
     query["status"] = ["NEW", "ASSIGNED", "REOPENED", "NEEDINFO", "UNCONFIRMED"]
