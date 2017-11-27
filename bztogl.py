@@ -54,7 +54,7 @@ class Target:
         if target_product:
             self.target_product = target_product
         else:
-            self.target_product = "gnome/" + product
+            self.target_product = "GNOME/" + product
 
 class GitLab(Target):
     GITLABURL = "https://gitlab-test.gnome.org/"
