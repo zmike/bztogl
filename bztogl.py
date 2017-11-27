@@ -47,6 +47,12 @@ This bug has been migrated to GNOME's GitLab instance and has been closed from f
 You can subscribe and participate further through the new bug through this link to our GitLab instance: {}.
 """
 
+NEEDINFO_LABEL = "2. Needs Information"
+
+KEYWORD_MAP = { "accessibility": "8. Accessibility",
+                "newcomers": "4. Newcomers",
+                "security": "1. Security" }
+
 class Target:
     def __init__ (self, token, product, target_product=None):
         self.token = token
@@ -70,10 +76,10 @@ class GitLab(Target):
     def get_project(self):
         return self.gl.projects.get(self.target_product)
 
-    def create_issue(self, id, summary, description, creation_time):
+    def create_issue(self, id, summary, description, labels, creation_time):
         return self.get_project().issues.create({'title': summary,
             'description': description,
-            'labels': 'bugzilla',
+            'labels': ','.join(labels),
             'created_at': creation_time})
 
     def find_user(self, email):
@@ -264,8 +270,15 @@ def processbug (bgo, target, bzbug):
 
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
     description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
+    labels = ['bugzilla']
+    if bzbug.status == 'NEEDINFO':
+        labels += [NEEDINFO_LABEL]
 
-    issue = target.create_issue (bzbug.id, summary, description, str(bzbug.creation_time))
+    for kw in bzbug.keywords:
+        if kw in KEYWORD_MAP:
+            labels += [KEYWORD_MAP[kw]]
+
+    issue = target.create_issue (bzbug.id, summary, description, labels, str(bzbug.creation_time))
 
     # Assign bug to actual account if exists
     assignee = target.find_user(bzbug.assigned_to)
