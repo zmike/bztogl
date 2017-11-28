@@ -28,6 +28,12 @@ DESC_TEMPLATE = """## Submitted by {submitter}
 **[Link to original bug (#{id})](https://bugzilla.gnome.org/show_bug.cgi?id={id})**  
 ## Description
 {body}
+
+{dependencies}
+"""
+
+DEPENDENCIES_TEMPLATE = """{depends_on}
+{blocks}
 """
 
 COMMENT_TEMPLATE = """:{emoji}: **{author}** {action}:
@@ -127,10 +133,25 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     if not bug.assigned_to.endswith("gnome.bugs"):
         assigned_to = "**Assigned to {}**  \n".format(id_to_name(bug.assigned_to, user_cache))
 
+    deps = ""
+    if bug.depends_on:
+        deps += "### Depends on\n"
+        for bugid in bug.depends_on:
+            bugurl = 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
+            deps += "  * [Bug {}]({})\n".format(bugid, bugurl)
+
+    blocks = ""
+    if bug.blocks:
+        blocks += "### Blocking\n"
+        for bugid in bug.blocks:
+            bugurl = 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
+            blocks += "  * [Bug {}]({})\n".format(bugid, bugurl)
+
     return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
                                 assigned_to=assigned_to,
                                 id=bug.id,
-                                body=body_to_markdown_quote(text))
+                                body=body_to_markdown_quote(text),
+                                dependencies=DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks))
 
 def bugzilla_migration_closing_comment (gl_issue):
     return MIGR_TEMPLATE.format(gl_issue.web_url)
@@ -143,6 +164,7 @@ def processbug (bgo, target, bzbug):
     #bzbug.creationtime
     #bzbug.target_milestone
     #bzbug.blocks
+    #bzbug.depends_on
     #bzbug.assigned_to
 
     def get_attachments_metadata (self):
