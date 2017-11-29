@@ -23,9 +23,13 @@ import urllib
 import bugzilla
 import gitlab
 
-DESC_TEMPLATE = """## Submitted by {submitter}  
+# Note, the \n\ is to prevent trailing whitespace from being stripped by
+# people's editors. It is there intentionally.
+
+DESC_TEMPLATE = """## Submitted by {submitter}  \n\
 {assigned_to}
-**[Link to original bug (#{id})](https://bugzilla.gnome.org/show_bug.cgi?id={id})**  
+**[Link to original bug (#{id})]\
+(https://bugzilla.gnome.org/show_bug.cgi?id={id})**  \n\
 ## Description
 {body}
 
@@ -37,30 +41,34 @@ DEPENDENCIES_TEMPLATE = """{depends_on}
 """
 
 COMMENT_TEMPLATE = """:{emoji}: **{author}** {action}:
-{body}  
+{body}  \n\
 {attachment}
 """
 
-ATTACHMENT_TEMPLATE = """  
-{obsolete}**{kind} {atid}**{obsolete}, "{summary}":  
+ATTACHMENT_TEMPLATE = """  \n\
+{obsolete}**{kind} {atid}**{obsolete}, "{summary}":  \n\
 {markdown}
 """
 
 MIGR_TEMPLATE = """-- GitLab Migration Automatic Message --
 
-This bug has been migrated to GNOME's GitLab instance and has been closed from further activity.
+This bug has been migrated to GNOME's GitLab instance and has been closed \
+from further activity.
 
-You can subscribe and participate further through the new bug through this link to our GitLab instance: {}.
+You can subscribe and participate further through the new bug through this \
+link to our GitLab instance: {}.
 """
 
 NEEDINFO_LABEL = "2. Needs Information"
+KEYWORD_MAP = {
+    "accessibility": "8. Accessibility",
+    "newcomers": "4. Newcomers",
+    "security": "1. Security"
+}
 
-KEYWORD_MAP = { "accessibility": "8. Accessibility",
-                "newcomers": "4. Newcomers",
-                "security": "1. Security" }
 
 class Target:
-    def __init__ (self, token, product, target_product=None):
+    def __init__(self, token, product, target_product=None):
         self.token = token
         self.product = product
         if target_product:
@@ -68,14 +76,15 @@ class Target:
         else:
             self.target_product = "GNOME/" + product
 
+
 class GitLab(Target):
     GITLABURL = "https://gitlab-test.gnome.org/"
 
-    def __init__ (self, token, product, target_product=None):
+    def __init__(self, token, product, target_product=None):
         Target.__init__(self, token, product, target_product)
         self.gl = None
 
-    def connect (self):
+    def connect(self):
         print("Connecting to %s" % self.GITLABURL)
         self.gl = gitlab.Gitlab(self.GITLABURL, self.token)
 
@@ -83,10 +92,12 @@ class GitLab(Target):
         return self.gl.projects.get(self.target_product)
 
     def create_issue(self, id, summary, description, labels, creation_time):
-        return self.get_project().issues.create({'title': summary,
+        return self.get_project().issues.create({
+            'title': summary,
             'description': description,
             'labels': ','.join(labels),
-            'created_at': creation_time})
+            'created_at': creation_time
+        })
 
     def find_user(self, email):
         possible_users = self.gl.users.search(email)
@@ -94,21 +105,30 @@ class GitLab(Target):
             return possible_users[0]
         return None
 
+
+def bugzilla_url(bugid):
+    return 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
+
+
 def autolink_markdown(text):
-    text = re.sub(r'([Bb]ug) ([0-9]+)', '[\\1 \\2](https://bugzilla.gnome.org/show_bug.cgi?id=\\2)', text)
+    text = re.sub(r'([Bb]ug) ([0-9]+)',
+                  '[\\1 \\2]({})'.format(bugzilla_url('\\2')), text)
     # Prevent spurious links to other GitLab issues
     text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
     return text
 
-def body_to_markdown_quote (body):
+
+def body_to_markdown_quote(body):
     if not body:
         return '\n'
     return ">>>\n{}\n>>>\n".format(autolink_markdown(body.encode('utf-8')))
 
-def id_to_name (bzid, user_cache):
+
+def id_to_name(bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
         return bzid
     return user_cache[bzid].encode('utf-8')
+
 
 def populate_user_cache(bgo, target, user_cache):
     real_names = {}
@@ -117,12 +137,16 @@ def populate_user_cache(bgo, target, user_cache):
         if gitlab_user is not None:
             real_names[bzu.email] = '@' + gitlab_user.username
         elif bzu.real_name:
-            # Heuristically remove "(not reading bugmail) or (not receiving bugmail)"
-            real_names[bzu.email] = re.sub(r' \(not .+ing bugmail\)', '', bzu.real_name)
+            # Heuristically remove "(not reading bugmail) or (not receiving
+            # bugmail)"
+            real_names[bzu.email] = re.sub(r' \(not .+ing bugmail\)', '',
+                                           bzu.real_name)
         else:
-            real_names[bzu.email] = '{}..@..{}'.format(bzu.email[:3], bzu.email[-3:])
+            real_names[bzu.email] = '{}..@..{}'.format(bzu.email[:3],
+                                                       bzu.email[-3:])
 
     return real_names
+
 
 def initial_comment_to_issue_description(bug, text, user_cache):
     if not text:
@@ -131,43 +155,45 @@ def initial_comment_to_issue_description(bug, text, user_cache):
     # Assignment of $PROJECT@gnome.bugs effectively means unassigned
     assigned_to = ""
     if not bug.assigned_to.endswith("gnome.bugs"):
-        assigned_to = "**Assigned to {}**  \n".format(id_to_name(bug.assigned_to, user_cache))
+        assigned_to = "**Assigned to {}**  \n".format(
+            id_to_name(bug.assigned_to, user_cache))
 
     deps = ""
     if bug.depends_on:
         deps += "### Depends on\n"
         for bugid in bug.depends_on:
-            bugurl = 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
-            deps += "  * [Bug {}]({})\n".format(bugid, bugurl)
+            deps += "  * [Bug {}]({})\n".format(bugid, bugzilla_url(bugid))
 
     blocks = ""
     if bug.blocks:
         blocks += "### Blocking\n"
         for bugid in bug.blocks:
-            bugurl = 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
-            blocks += "  * [Bug {}]({})\n".format(bugid, bugurl)
+            blocks += "  * [Bug {}]({})\n".format(bugid, bugzilla_url(bugid))
 
+    dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
     return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
                                 assigned_to=assigned_to,
                                 id=bug.id,
                                 body=body_to_markdown_quote(text),
-                                dependencies=DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks))
+                                dependencies=dependencies)
 
-def bugzilla_migration_closing_comment (gl_issue):
+
+def bugzilla_migration_closing_comment(gl_issue):
     return MIGR_TEMPLATE.format(gl_issue.web_url)
 
-def processbug (bgo, target, bzbug):
-    print ("Processing bug #%d: %s" % (bzbug.id, bzbug.summary.encode('utf-8')))
-    #bzbug.id
-    #bzbug.summary
-    #bzbug.creator
-    #bzbug.creationtime
-    #bzbug.target_milestone
-    #bzbug.blocks
-    #bzbug.depends_on
-    #bzbug.assigned_to
 
-    def get_attachments_metadata (self):
+def processbug(bgo, target, bzbug):
+    print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary.encode('utf-8')))
+    # bzbug.id
+    # bzbug.summary
+    # bzbug.creator
+    # bzbug.creationtime
+    # bzbug.target_milestone
+    # bzbug.blocks
+    # bzbug.depends_on
+    # bzbug.assigned_to
+
+    def get_attachments_metadata(self):
         # pylint: disable=protected-access
         proxy = self.bugzilla._proxy
         # pylint: enable=protected-access
@@ -185,24 +211,27 @@ def processbug (bgo, target, bzbug):
             index[atid] = at
         return index
 
-    def gitlab_upload_file (target, filename, f):
-        url = target.GITLABURL + "api/v3/projects/{}/uploads".format(target.get_project().id)
+    def gitlab_upload_file(target, filename, f):
+        url = (target.GITLABURL +
+               "api/v3/projects/{}/uploads".format(target.get_project().id))
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
-        ret = target.gl.session.post (url,
-                files={'file': (urllib.quote(filename), f)})
+        ret = target.gl.session.post(url, files={
+            'file': (urllib.quote(filename), f)
+        })
         if ret.status_code != 201:
             raise Exception("Could not upload file: {}".format(ret.text))
-        return ret.json ()
+        return ret.json()
 
     def migrate_attachment(comment, metadata):
         atid = comment['attachment_id']
 
         filename = metadata[atid]['file_name'].encode('utf-8')
-        print ("    Attachment {} found, migrating".format(filename))
+        print("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
         ret = gitlab_upload_file(target, filename, attfile)
 
-        return ATTACHMENT_TEMPLATE.format(atid=atid,
+        return ATTACHMENT_TEMPLATE.format(
+            atid=atid,
             kind='Patch' if metadata[atid]['is_patch'] else 'Attachment',
             obsolete='~~' if metadata[atid]['is_obsolete'] else '',
             summary=metadata[atid]['summary'],
@@ -266,12 +295,13 @@ def processbug (bgo, target, bzbug):
             body = body.replace('\n', '  \n')
             return 'arrow_heading_up', 'committed some patches', body
 
-        if re.match(r'\*\*\* Bug [0-9]+ has been marked as a duplicate of this bug. \*\*\*', body):
+        if re.match(r'\*\*\* Bug [0-9]+ has been marked as a duplicate of '
+                    'this bug. \*\*\*', body):
             return 'link', 'closed a related bug', body
 
         return 'speech_balloon', 'said', body
 
-    attachment_metadata = get_attachments_metadata (bzbug)
+    attachment_metadata = get_attachments_metadata(bzbug)
     comments = bzbug.getcomments()
 
     firstcomment = None if len(comments) < 1 else comments[0]
@@ -279,7 +309,8 @@ def processbug (bgo, target, bzbug):
     if firstcomment['author'] == bzbug.creator:
         desctext = firstcomment['text']
         if 'attachment_id' in firstcomment:
-            desctext += '\n' + migrate_attachment(firstcomment, attachment_metadata)
+            desctext += '\n' + migrate_attachment(firstcomment,
+                                                  attachment_metadata)
         comments = comments[1:]
 
     user_cache = {}
@@ -288,10 +319,11 @@ def processbug (bgo, target, bzbug):
     for comment in comments:
         user_cache[comment['creator']] = None
 
-    user_cache = populate_user_cache (bgo, target, user_cache)
+    user_cache = populate_user_cache(bgo, target, user_cache)
 
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
-    description = initial_comment_to_issue_description (bzbug, desctext, user_cache)
+    description = initial_comment_to_issue_description(bzbug, desctext,
+                                                       user_cache)
     labels = ['bugzilla']
     if bzbug.status == 'NEEDINFO':
         labels += [NEEDINFO_LABEL]
@@ -300,29 +332,33 @@ def processbug (bgo, target, bzbug):
         if kw in KEYWORD_MAP:
             labels += [KEYWORD_MAP[kw]]
 
-    issue = target.create_issue (bzbug.id, summary, description, labels, str(bzbug.creation_time))
+    issue = target.create_issue(bzbug.id, summary, description, labels,
+                                str(bzbug.creation_time))
 
     # Assign bug to actual account if exists
     assignee = target.find_user(bzbug.assigned_to)
     if assignee is not None:
         issue.assignee_id = assignee.id
 
-    print ("Migrating comments: ")
+    print("Migrating comments: ")
     c = 0
     for comment in comments:
         c = c + 1
         print("  [{}/{}]".format(c, len(comments)))
         comment_attachment = ""
         # Only migrate attachment if this is the comment where it was created
-        if 'attachment_id' in comment and comment['text'].startswith('Created attachment'):
-            comment_attachment = migrate_attachment(comment, attachment_metadata)
+        if 'attachment_id' in comment and \
+                comment['text'].startswith('Created attachment'):
+            comment_attachment = migrate_attachment(comment,
+                                                    attachment_metadata)
 
-        emoji, action, body = analyze_bugzilla_comment(comment, attachment_metadata)
+        emoji, action, body = analyze_bugzilla_comment(comment,
+                                                       attachment_metadata)
         author = id_to_name(comment['author'], user_cache)
 
         issue.notes.create({
-            'body': COMMENT_TEMPLATE.format(emoji=emoji, author=author,
-                action=action,
+            'body': COMMENT_TEMPLATE.format(
+                emoji=emoji, author=author, action=action,
                 body=body_to_markdown_quote(body),
                 attachment=comment_attachment),
             'created_at': str(comment['creation_time'])
@@ -330,60 +366,70 @@ def processbug (bgo, target, bzbug):
 
     issue.save()
 
-    print("New GitLab issue created from bugzilla bug {}: {}".format(bzbug.id, issue.web_url))
+    print("New GitLab issue created from bugzilla bug "
+          "{}: {}".format(bzbug.id, issue.web_url))
 
     if bzbug.bugzilla.logged_in:
         bz = bzbug.bugzilla
         print("Adding a comment in bugzilla and closing the bug there")
-        #TODO: Create a resolution for this specific case? MIGRATED or FWDED?
-        bz.update_bugs(bzbug.bug_id,
-                       bz.build_update(comment=bugzilla_migration_closing_comment (issue),
-                                       status='RESOLVED',
-                                       resolution='OBSOLETE'))
+        # TODO: Create a resolution for this specific case? MIGRATED or FWDED?
+        bz.update_bugs(bzbug.bug_id, bz.build_update(
+            comment=bugzilla_migration_closing_comment(issue),
+            status='RESOLVED',
+            resolution='OBSOLETE'))
 
 
 def options():
-    parser = argparse.ArgumentParser(description="Bugzilla migration helper for bugzilla.gnome.org products")
-    parser.add_argument('--production', help="target production instead of testing")
+    parser = argparse.ArgumentParser(
+        description="Bugzilla migration helper for bugzilla.gnome.org "
+                    "products")
+    parser.add_argument('--production',
+                        help="target production instead of testing")
     parser.add_argument('--token', help="gitlab token API", required=True)
-    parser.add_argument('--product', help="bugzilla product name", required=True)
+    parser.add_argument('--product', help="bugzilla product name",
+                        required=True)
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
     parser.add_argument('--target-product', help="product name for gitlab")
     return parser.parse_args()
 
+
 def main():
     args = options()
 
-    target = GitLab (args.token, args.product, args.target_product)
+    target = GitLab(args.token, args.product, args.target_product)
     if args.production:
         target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
     if not target.get_project():
-        print("Project {} not present in {}".format(target.target_product, args.target))
+        print("Project {} not present in {}".format(target.target_product,
+                                                    args.target))
         sys.exit(1)
 
-    print ("Connecting to bugzilla.gnome.org")
+    print("Connecting to bugzilla.gnome.org")
     if args.bz_user and args.bz_password:
-        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user, args.bz_password)
+        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user,
+                                args.bz_password)
     else:
-        print ("WARNING: Bugzilla credentials were not provided, BZ bugs won't be closed and subscribers won't notice the migration")
+        print("WARNING: Bugzilla credentials were not provided, BZ bugs won't "
+              "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
-    query = bgo.build_query (product=args.product)
-    query["status"] = ["NEW", "ASSIGNED", "REOPENED", "NEEDINFO", "UNCONFIRMED"]
-    print ("Querying for open bugs for the '%s' product" % args.product)
+    query = bgo.build_query(product=args.product)
+    query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()
+    print("Querying for open bugs for the '%s' product" % args.product)
     bzbugs = bgo.query(query)
-    print ("{} bugs found".format(len(bzbugs)))
+    print("{} bugs found".format(len(bzbugs)))
     count = 0
 
-    #TODO: Check if there were bugs from this module already filed (i.e. use a tag to mark these)
+    # TODO: Check if there were bugs from this module already filed (i.e. use a
+    # tag to mark these)
     for bzbug in bzbugs:
         count += 1
-        sys.stdout.write ('[{}/{}] '.format(count,len(bzbugs)))
-        processbug (bgo, target, bzbug)
+        sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
+        processbug(bgo, target, bzbug)
+
 
 if __name__ == '__main__':
     main()
-
