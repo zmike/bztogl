@@ -4,3 +4,8 @@ lint:
   script:
   - pip install flake8
   - flake8 .
+
+unittests:
+  script:
+  - pip install pytest
+  - python -m pytest
