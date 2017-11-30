@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
 
 #    Copyright 2017 Alberto Ruiz <aruiz@gnome.org>
+#    Copyright 2017 Philip Chimento <philip.chimento@gmail.com>
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
