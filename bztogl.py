@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 #    Copyright 2017 Alberto Ruiz <aruiz@gnome.org>
 #    Copyright 2017 Philip Chimento <philip.chimento@gmail.com>
@@ -19,7 +19,7 @@
 import re
 import sys
 import argparse
-import urllib
+import urllib.parse
 
 import bugzilla
 import gitlab
@@ -126,18 +126,18 @@ def autolink_markdown(text):
 def body_to_markdown_quote(body):
     if not body:
         return '\n'
-    return ">>>\n{}\n>>>\n".format(autolink_markdown(body.encode('utf-8')))
+    return ">>>\n{}\n>>>\n".format(autolink_markdown(body))
 
 
 def id_to_name(bzid, user_cache):
     if bzid.endswith("gnome.bugs"):
         return bzid
-    return user_cache[bzid].encode('utf-8')
+    return user_cache[bzid]
 
 
 def populate_user_cache(bgo, target, user_cache):
     real_names = {}
-    for bzu in bgo.getusers(user_cache.keys()):
+    for bzu in bgo.getusers(list(user_cache.keys())):
         gitlab_user = target.find_user(bzu.email)
         if gitlab_user is not None:
             real_names[bzu.email] = '@' + gitlab_user.username
@@ -188,7 +188,7 @@ def bugzilla_migration_closing_comment(gl_issue):
 
 
 def processbug(bgo, target, bzbug):
-    print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary.encode('utf-8')))
+    print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
     # bzbug.id
     # bzbug.summary
     # bzbug.creator
@@ -221,7 +221,7 @@ def processbug(bgo, target, bzbug):
                "api/v3/projects/{}/uploads".format(target.get_project().id))
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
         ret = target.gl.session.post(url, files={
-            'file': (urllib.quote(filename), f)
+            'file': (urllib.parse.quote(filename), f)
         })
         if ret.status_code != 201:
             raise Exception("Could not upload file: {}".format(ret.text))
@@ -230,7 +230,7 @@ def processbug(bgo, target, bzbug):
     def migrate_attachment(comment, metadata):
         atid = comment['attachment_id']
 
-        filename = metadata[atid]['file_name'].encode('utf-8')
+        filename = metadata[atid]['file_name']
         print("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
         ret = gitlab_upload_file(target, filename, attfile)
@@ -326,7 +326,7 @@ def processbug(bgo, target, bzbug):
 
     user_cache = populate_user_cache(bgo, target, user_cache)
 
-    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary.encode('utf-8'))
+    summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
     description = initial_comment_to_issue_description(bzbug, desctext,
                                                        user_cache)
     labels = ['bugzilla']
