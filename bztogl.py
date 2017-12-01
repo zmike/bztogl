@@ -165,6 +165,7 @@ def bugzilla_migration_closing_comment(gl_issue):
 
 def processbug(bgo, target, user_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
+    # bzbug.cc
     # bzbug.id
     # bzbug.summary
     # bzbug.creator
@@ -336,6 +337,24 @@ def processbug(bgo, target, user_cache, bzbug):
                 attachment=comment_attachment),
             'created_at': str(comment['creation_time'])
         })
+
+    # Do last, so that previous actions don't all send an email
+    for cc_email in bzbug.cc:
+        subscriber = user_cache[cc_email]
+        if subscriber and subscriber.id is not None:
+            try:
+                issue.subscribe(sudo=subscriber.username)
+            except gitlab.GitlabSubscribeError as e:
+                if e.response_code in (201, 304):
+                    # 201 == workaround for python-gitlab bug
+                    # https://github.com/python-gitlab/python-gitlab/pull/382
+                    # 304 == already subscribed
+                    continue
+                if e.response_code == 403:
+                    print("WARNING: Subscribing users requires admin. "
+                          "Subscribers will not be migrated.")
+                    break
+                raise e
 
     issue.save()
 
