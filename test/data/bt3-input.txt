@@ -1,0 +1,84 @@
+OK, on second thought the bizarre behaviour goes away if I debug-print c_argc, so it must be some optimization (even though I compiled without optimization!)
+
+Here's a better minimal script because 1) you don't need to run a main loop and 2) I can get a useful backtrace from it:
+
+const Gtk = imports.gi.Gtk;
+Gtk.init(null);
+let tree = new Gtk.TreeView();
+let col = new Gtk.TreeViewColumn();
+let text1 = new Gtk.CellRendererText();
+col.set_cell_data_func(text1, () => {});
+
+Here's the relevant portion of the backtrace:
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00000003fceb3248 in sys_alloc (m=0x3fcebb040 <_gm_>, nb=72)
+    at /usr/src/debug/libffi-3.2.1-2/src/dlmalloc.c:3551
+3551          (void)set_segment_flags(&m->seg, mmap_flag);
+(gdb) bt
+#0  0x00000003fceb3248 in sys_alloc (m=0x3fcebb040 <_gm_>, nb=72)
+    at /usr/src/debug/libffi-3.2.1-2/src/dlmalloc.c:3551
+#1  dlmalloc (bytes=<optimized out>)
+    at /usr/src/debug/libffi-3.2.1-2/src/dlmalloc.c:4245
+#2  ffi_closure_alloc (size=<optimized out>, code=0xffffb8b8)
+    at /usr/src/debug/libffi-3.2.1-2/src/closures.c:616
+#3  0x00000003fc3d9d02 in g_callable_info_prepare_closure ()
+   from /usr/bin/cyggirepository-1.0-1.dll
+#4  0x0000000577de6e39 in gjs_callback_trampoline_new (context=0x6000a0ac0,
+    context@entry=0x0, function=..., function@entry=...,
+    callable_info=0x60042f4f0, callable_info@entry=0x600072820,
+    scope=GI_SCOPE_TYPE_NOTIFIED, scope@entry=17,
+    is_vfunc=is_vfunc@entry=false) at gi/function.cpp:502
+#5  0x0000000577de73a8 in gjs_invoke_c_function (context=0x0,
+    context@entry=0x6000a0ac0, function=function@entry=0x6004319e0,
+    obj=obj@entry=0x6ffffc39140, js_argc=2148882713, js_argc@entry=2,
+    js_argv=js_argv@entry=0x600125288, js_rval=js_rval@entry=0xffffbed0,
+    r_value=r_value@entry=0x0) at gi/function.cpp:871
+#6  0x0000000577de8322 in function_call (context=0x6000a0ac0, js_argc=2,
+    vp=0x600125278) at gi/function.cpp:1320
+...etc...
+(gdb) call gjs_dumpstack()
+[New Thread 4624.0x10f4]
+== Stack trace for context 0x600076000 ==
+@egList.js:6
+
+Note that even though the treeview isn't used anywhere in the script, if you don't create it then the segfault stops happening!
+
+Also, look at this:
+
+(gdb) frame 5
+#5  0x0000000577de73a8 in gjs_invoke_c_function (context=0x0,
+    context@entry=0x6000a0ac0, function=function@entry=0x6004319e0,
+    obj=obj@entry=0x6ffffc39140, js_argc=2148882713, js_argc@entry=2,
+    js_argv=js_argv@entry=0x600125288, js_rval=js_rval@entry=0xffffbed0,
+    r_value=r_value@entry=0x0) at gi/function.cpp:871
+
+The context is NULL, even though it was set to a valid-looking pointer at the function's entry. And there's really nothing in gjs_invoke_c_function() that would overwrite the context. Both of these facts suggest to me that the stack is getting clobbered.
+
+Breakpoint 1, gjs_invoke_c_function (context=context@entry=0x6000a0ac0,
+    function=function@entry=0x6004319e0, obj=obj@entry=0x6ffffc39140,
+    js_argc=js_argc@entry=2, js_argv=js_argv@entry=0x600125288,
+    js_rval=js_rval@entry=0xffffbed0, r_value=r_value@entry=0x0)
+    at gi/function.cpp:675
+675     {
+(gdb) watch context
+Watchpoint 2: context
+(gdb) next
+[New Thread 3636.0x2e4]
+701         GError *local_error = NULL;
+(gdb)
+715         if (completed_trampolines) {
+(gdb)
+Watchpoint 2: context
+
+Old value = (JSContext *) 0x6000a0ac0
+New value = (JSContext *) 0x0
+gjs_invoke_c_function (context=0x0, context@entry=0x6000a0ac0,
+    function=function@entry=0x6004319e0, obj=obj@entry=0x6ffffc39140,
+    js_argc=2148882713, js_argc@entry=2, js_argv=js_argv@entry=0x600125288,
+    js_rval=js_rval@entry=0xffffbed0, r_value=r_value@entry=0x0)
+    at gi/function.cpp:724
+724         is_method = g_callable_info_is_method(function->info);
+(gdb)
+
+Indeed, context and js_argc have been overwritten here. But by what?

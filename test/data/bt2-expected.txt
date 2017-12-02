@@ -1,0 +1,134 @@
+Found in coredumpctl:
+
+```
+#0  0x00007f7fc2e57168 in icalarray_free (array=0x7f7f6c006540)
+    at /usr/src/debug/libical-2.0.0/src/libical/icalarray.c:109
+        chunks = 2
+        chunk = 1
+#1  0x00007f7fc2e68fad in icaltimezone_expand_changes (end_year=<optimized out>, zone=0x7f7f74005360)
+    at /usr/src/debug/libical-2.0.0/src/libical/icaltimezone.c:478
+        changes = 0x7f7f7400ae20
+        comp = <optimized out>
+        icaltimezone_minimum_expansion_year = 2017
+        changes_end_year = <optimized out>
+#2  0x00007f7fc2e68fad in icaltimezone_ensure_coverage (zone=zone@entry=0x7f7f74005360, end_year=<optimized out>)
+    at /usr/src/debug/libical-2.0.0/src/libical/icaltimezone.c:450
+        icaltimezone_minimum_expansion_year = 2017
+        changes_end_year = <optimized out>
+#3  0x00007f7fc2e69055 in icaltimezone_get_utc_offset (zone=zone@entry=0x7f7f74005360, tt=tt@entry=0x7f7f79539880, is_daylight=is_daylight@entry=0x0)
+    at /usr/src/debug/libical-2.0.0/src/libical/icaltimezone.c:782
+        zone_change = <optimized out>
+        prev_zone_change = <optimized out>
+        tt_change = 
+          {utc_offset = 432122048, prev_utc_offset = 21974, year = 2035521672, month = 32639, day = 432122072, hour = 21974, minute = 2035521680, second = 32639, is_daylight = 2035522128}
+        tmp_change = 
+          {utc_offset = 432369664, prev_utc_offset = 21974, year = 432122176, month = 21974, day = 1946199296, hour = 32639, minute = 2035521672, second = 32639, is_daylight = 0}
+        change_num = <optimized out>
+        change_num_to_use = <optimized out>
+        found_change = <optimized out>
+        step = <optimized out>
+        utc_offset_change = <optimized out>
+        cmp = <optimized out>
+        want_daylight = <optimized out>
+#4  0x00007f7fc2e694cd in icaltimezone_convert_time (tt=tt@entry=0x7f7f79539880, from_zone=from_zone@entry=0x7f7f74005360, to_zone=to_zone@entry=0x7f7fc3097180 <utc_timezone>) at /usr/src/debug/libical-2.0.0/src/libical/icaltimezone.c:743
+        utc_offset = <optimized out>
+        is_daylight = 11
+#5  0x00007f7fc2e651ab in icaltime_as_timet_with_zone (tt=..., zone=0x7f7f74005360) at /usr/src/debug/libical-2.0.0/src/libical/icaltime.c:352
+        utc_zone = 0x7f7fc3097180 <utc_timezone>
+        stm = 
+          {tm_sec = 0, tm_min = 0, tm_hour = -963352846, tm_mday = 32639, tm_mon = 0, tm_year = 0, tm_wday = 0, tm_yday = 32639, tm_isdst = 0, tm_gmtoff = 30, tm_zone = 0x0}
+        local_tt = 
+          {year = 2016, month = 11, day = 30, hour = 10, minute = 0, second = 0, is_utc = 0, is_date = 0, is_daylight = 0, zone = 0x7f7f74005360}
+#6  0x00007f7fc694a74a in e_cal_recur_generate_instances_sync (comp=0x7f7f74008f90, interval_start=..., interval_end=..., callback=callback@entry=0x7f7fc69462d0 <backward_compatibility_instance_cb>, callback_user_data=callback_user_data@entry=0x7f7f7953a7d0, get_tz_callback=get_tz_callback@entry=0x7f7fc6946010 <backward_compatibility_resolve_timezone_cb>, get_tz_callback_user_data=get_tz_callback_user_data@entry=0x7f7f7953a7d0, default_timezone=default_timezone@entry=0x55d619d15400, cancellable=0x0, error=0x0) at e-cal-recur.c:403
+        dtstart = 
+          {year = 2016, month = 11, day = 30, hour = 9, minute = 0, second = 0, is_utc = 0, is_date = 0, is_daylight = 0, zone = 0x7f7f74005360}
+        dtend = 
+          {year = 2016, month = 11, day = 30, hour = 10, minute = 0, second = 0, is_utc = 0, is_date = 0, is_daylight = 0, zone = 0x7f7f74005360}
+        next = 
+          {year = 2139062143, month = 2139062143, day = 2139062143, hour = 2139062143, minute = 2139062143, second = 2139062143, is_utc = 2139062143, is_date = 2139062143, is_daylight = 2139062143, zone = 0x7f7f7f7f7f7f7f7f}
+        duration_days = <optimized out>
+        duration_seconds = 0
+        prop = <optimized out>
+        times = 0x55d619ef0e40
+        success = 1
+        __func__ = "e_cal_recur_generate_instances_sync"
+#7  0x00007f7fc694bc4e in e_cal_recur_generate_instances (comp=comp@entry=0x55d619e7ec20 [ECalComponent], start=start@entry=0, end=end@entry=1486656182, cb=cb@entry=0x7f7fc692fc10 <add_instance>, cb_data=cb_data@entry=0x7f7f74008990, tz_cb=tz_cb@entry=0x7f7fc6938cd0 <e_cal_client_resolve_tzid_cb>, tz_cb_data=0x55d619c1a940, default_timezone=0x55d619d15400) at e-cal-recur.c:1336
+        istart = 
+          {year = 1970, month = 1, day = 1, hour = 0, minute = 0, second = 0, is_utc = 1, is_date = 0, is_daylight = 0, zone = 0x0}
+        iend = 
+          {year = 2017, month = 2, day = 9, hour = 16, minute = 3, second = 2, is_utc = 1, is_date = 0, is_daylight = 0, zone = 0x0}
+        bcd = 
+          {comp = 0x55d619e7ec20 [ECalComponent], cb = 0x7f7fc692fc10 <add_instance>, cb_data = 0x7f7f74008990, tz_cb = 0x7f7fc6938cd0 <e_cal_client_resolve_tzid_cb>, tz_cb_data = 0x55d619c1a940}
+#8  0x00007f7fc6939196 in generate_instances (client=client@entry=0x55d619c1a940 [ECalClient], start=start@entry=0, end=end@entry=1486656182, objects=0x7f7f74005070 = {...}, cancellable=cancellable@entry=0x0, cb=cb@entry=0x7f7fc692fc10 <add_instance>, cb_data=0x7f7f74007e00) at e-cal-client.c:2696
+        datetime = {value = 0x0, tzid = 0x0}
+        start_zone = 0x7f7f74005360
+        end_zone = 0x7f7f74005360
+        instances_hold = 0x7f7f74008990
+        comp = 0x55d619e7ec20 [ECalComponent]
+        default_zone = 0x55d619d15400
+        instances = 0x0
+        detached_instances = 0x0
+        l = 0x7f7f74005070 = {0x55d619e7ec20}
+        priv = 0x55d619c1a8c0
+        __func__ = "generate_instances"
+#9  0x00007f7fc693a102 in e_cal_client_generate_instances_for_object_sync (client=client@entry=0x55d619c1a940 [ECalClient], icalcomp=<optimized out>, start=start@entry=0, end=end@entry=1486656182, cb=cb@entry=0x55d619971a10 <cal_data_model_instance_generated>, cb_data=cb_data@entry=0x7f7f7953aae0)
+    at e-cal-client.c:3353
+        comp = 0x55d619e7eaa0 [ECalComponent]
+        uid = 0x7f7f74001570 "20161129T145951Z-10615-1000-1-0@victory-road"
+        instances = 0x0
+        datetime = {value = 0x0, tzid = 0x0}
+        start_zone = 0x7f7f74005360
+        end_zone = 0x7f7f74005360
+        instances_hold = 0x7f7f74007e00
+        __func__ = "e_cal_client_generate_instances_for_object_sync"
+#10 0x000055d6199722d6 in cal_data_model_expand_recurrences_thread (data_model=0x55d619c3d9c0 [ECalDataModel], user_data=0x55d619c1a940)
+    at e-cal-data-model.c:1149
+        icomp = <optimized out>
+        gid = 
+          {client = 0x55d619c1a940 [ECalClient], zone = 0x55d619c2dd60, pexpanded_recurrences = 0x7f7f7953aad8}
+        client = 0x55d619c1a940 [ECalClient]
+        to_expand_recurrences = 0x7f7f60002570 = {0x55d619e36050}
+        link = 0x7f7f60002570 = {0x55d619e36050}
+        expanded_recurrences = 0x0
+        range_start = 0
+        range_end = 1486656182
+        view_data = 0x55d619c7e4c0
+        __func__ = "cal_data_model_expand_recurrences_thread"
+#11 0x000055d61997072a in cal_data_model_internal_thread_job_func (data=0x55d619d89940, user_data=<optimized out>) at e-cal-data-model.c:471
+        data_model = <optimized out>
+        job_data = 0x55d619d89940
+#12 0x00007f7fc37534fe in g_thread_pool_thread_proxy (data=<optimized out>)
+    at gthreadpool.c:307
+        pool = 0x55d619c57ad0
+#13 0x00007f7fc3752b03 in g_thread_proxy (data=0x7f7f5c0041e0) at gthread.c:784
+        thread = 0x7f7f5c0041e0
+        __func__ = "g_thread_proxy"
+#14 0x00007f7fc309f6ca in start_thread (arg=0x7f7f7953b700)
+    at pthread_create.c:333
+        __res = <optimized out>
+        pd = 0x7f7f7953b700
+        now = <optimized out>
+        unwind_buf = 
+              {cancel_jmp_buf = {{jmp_buf = {140185473103616, 1301787102023683917, 0, 140734796750079, 140185473104320, 140185473103616, -1374140084998205619, -1373766750766330035}, mask_was_saved = 0}}, priv = {pad = {0x0, 0x0, 0x0, 0x0}, data = {prev = 0x0, cleanup = 0x0, canceltype = 0}}}
+        not_first_call = <optimized out>
+        pagesize_m1 = <optimized out>
+        sp = <optimized out>
+        freesize = <optimized out>
+        __PRETTY_FUNCTION__ = "start_thread"
+#15 0x00007f7fc2b68f7f in clone ()
+    at ../sysdeps/unix/sysv/linux/x86_64/clone.S:105
+```
+
+**[Link to original bug (#778419)](https://bugzilla.gnome.org/show_bug.cgi?id=778419)**  
+
+## Design Tasks
+
+TODO
+
+## Development Tasks
+
+TODO
+
+## QA Tasks
+
+TODO

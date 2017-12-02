@@ -1,0 +1,26 @@
+(gdb) bt full
+#0  gjs_hook_up_vfunc (cx=0x6873c0, argc=<optimized out>, vp=<optimized out>) at gi/object.c:2325
+        type_info = 0x71d0a0
+        interface_info = 0x71d000
+        method_ptr = 0x71fc30
+        callback_info = 0x71d000
+        offset = <optimized out>
+        trampoline = 0x0
+        argv = <optimized out>
+        name = 0x7210b0 "forall"
+        object = 0x7ffff1524870
+        function = 0x7ffff1521a50
+        priv = 0x71d0a0
+        gtype = <optimized out>
+        info_gtype = <optimized out>
+        info = <optimized out>
+        vfunc = 0x710370
+        implementor_vtable = 0x71f8e0
+        field_info = 0x612f20
+        __PRETTY_FUNCTION__ = "gjs_hook_up_vfunc"
+#1  0x00007ffff5ebc279 in ?? () from /usr/lib/libmozjs185.so.1.0
+No symbol table info available.
+#2  0x00007ffff5ec626f in ?? () from /usr/lib/libmozjs185.so.1.0
+No symbol table info available.
+#3  0x00007ffff5ec825a in ?? () from /usr/lib/libmozjs185.so.1.0
+No symbol table info available.

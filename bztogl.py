@@ -23,6 +23,8 @@ import urllib
 import bugzilla
 import gitlab
 
+import bt
+
 # Note, the \n\ is to prevent trailing whitespace from being stripped by
 # people's editors. It is there intentionally.
 
@@ -115,6 +117,8 @@ def autolink_markdown(text):
                   '[\\1 \\2]({})'.format(bugzilla_url('\\2')), text)
     # Prevent spurious links to other GitLab issues
     text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
+    # Quote stack traces as preformatted text
+    text = bt.quote_stack_traces(text)
     return text
 
 
