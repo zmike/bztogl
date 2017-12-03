@@ -26,44 +26,8 @@ import json
 import bugzilla
 import gitlab
 
-import bt
 import users
-
-# Note, the \n\ is to prevent trailing whitespace from being stripped by
-# people's editors. It is there intentionally.
-
-DESC_TEMPLATE = """## Submitted by {submitter}  \n\
-{assigned_to}
-**[Link to original bug (#{id})]\
-(https://bugzilla.gnome.org/show_bug.cgi?id={id})**  \n\
-## Description
-{body}
-
-{dependencies}
-"""
-
-DEPENDENCIES_TEMPLATE = """{depends_on}
-{blocks}
-"""
-
-COMMENT_TEMPLATE = """:{emoji}: **{author}** {action}:
-{body}  \n\
-{attachment}
-"""
-
-ATTACHMENT_TEMPLATE = """  \n\
-{obsolete}**{kind} {atid}**{obsolete}, "{summary}":  \n\
-{markdown}
-"""
-
-MIGR_TEMPLATE = """-- GitLab Migration Automatic Message --
-
-This bug has been migrated to GNOME's GitLab instance and has been closed \
-from further activity.
-
-You can subscribe and participate further through the new bug through this \
-link to our GitLab instance: {}.
-"""
+import template
 
 NEEDINFO_LABEL = "2. Needs Information"
 KEYWORD_MAP = {
@@ -170,59 +134,6 @@ class GitLab:
             import_status = self.get_import_status(project)
 
 
-def bugzilla_url(bugid):
-    return 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
-
-
-def autolink_markdown(text):
-    text = re.sub(r'([Bb]ug) ([0-9]+)',
-                  '[\\1 \\2]({})'.format(bugzilla_url('\\2')), text)
-    # Prevent spurious links to other GitLab issues
-    text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
-    # Quote stack traces as preformatted text
-    text = bt.quote_stack_traces(text)
-    return text
-
-
-def body_to_markdown_quote(body):
-    if not body:
-        return '\n'
-    return ">>>\n{}\n>>>\n".format(autolink_markdown(body))
-
-
-def initial_comment_to_issue_description(bug, text, user_cache):
-    if not text:
-        text = ""
-
-    # Assignment of $PROJECT@gnome.bugs effectively means unassigned
-    assigned_to = ""
-    assignee = user_cache[bug.assigned_to]
-    if assignee is not None:
-        assigned_to = "Assigned to **{}**  \n".format(assignee.display_name())
-
-    deps = ""
-    if bug.depends_on:
-        deps += "### Depends on\n"
-        for bugid in bug.depends_on:
-            deps += "  * [Bug {}]({})\n".format(bugid, bugzilla_url(bugid))
-
-    blocks = ""
-    if bug.blocks:
-        blocks += "### Blocking\n"
-        for bugid in bug.blocks:
-            blocks += "  * [Bug {}]({})\n".format(bugid, bugzilla_url(bugid))
-
-    dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
-    return DESC_TEMPLATE.format(
-        submitter=user_cache[bug.creator].display_name(),
-        assigned_to=assigned_to, id=bug.id, body=autolink_markdown(text),
-        dependencies=dependencies)
-
-
-def bugzilla_migration_closing_comment(gl_issue):
-    return MIGR_TEMPLATE.format(gl_issue.web_url)
-
-
 def processbug(bgo, target, user_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
     # bzbug.cc
@@ -272,12 +183,7 @@ def processbug(bgo, target, user_cache, bzbug):
         attfile = bgo.openattachment(atid)
         ret = gitlab_upload_file(target, filename, attfile)
 
-        return ATTACHMENT_TEMPLATE.format(
-            atid=atid,
-            kind='Patch' if metadata[atid]['is_patch'] else 'Attachment',
-            obsolete='~~' if metadata[atid]['is_obsolete'] else '',
-            summary=metadata[atid]['summary'],
-            markdown=ret['markdown'])
+        return template.render_attachment(atid, metadata[atid], ret)
 
     def remove_first_lines(text, numlines):
         return '\n'.join(text.split('\n')[numlines:])
@@ -355,8 +261,9 @@ def processbug(bgo, target, user_cache, bzbug):
                                                   attachment_metadata)
         comments = comments[1:]
 
-    description = initial_comment_to_issue_description(bzbug, desctext,
-                                                       user_cache)
+    description = \
+        template.render_issue_description(bzbug, desctext, user_cache)
+
     labels = ['bugzilla']
     if bzbug.status == 'NEEDINFO':
         labels += [NEEDINFO_LABEL]
@@ -391,12 +298,11 @@ def processbug(bgo, target, user_cache, bzbug):
         emoji, action, body = analyze_bugzilla_comment(comment,
                                                        attachment_metadata)
         author = user_cache[comment['author']].display_name()
+        gitlab_comment = template.render_comment(emoji, author, action, body,
+                                                 comment_attachment)
 
         issue.notes.create({
-            'body': COMMENT_TEMPLATE.format(
-                emoji=emoji, author=author, action=action,
-                body=body_to_markdown_quote(body),
-                attachment=comment_attachment),
+            'body': gitlab_comment,
             'created_at': str(comment['creation_time'])
         })
 
@@ -430,7 +336,7 @@ def processbug(bgo, target, user_cache, bzbug):
         print("Adding a comment in bugzilla and closing the bug there")
         # TODO: Create a resolution for this specific case? MIGRATED or FWDED?
         bz.update_bugs(bzbug.bug_id, bz.build_update(
-            comment=bugzilla_migration_closing_comment(issue),
+            comment=template.bugzilla_migration_closing_comment(issue),
             status='RESOLVED',
             resolution='OBSOLETE'))
 
