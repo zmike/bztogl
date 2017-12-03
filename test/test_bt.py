@@ -3,10 +3,10 @@ import bt
 
 def _compare_quoted_backtraces(prefix):
     with open('test/data/{}-input.txt'.format(prefix)) as f:
-        raw = f.read().decode('utf-8')
+        raw = f.read()
 
     with open('test/data/{}-expected.txt'.format(prefix)) as f:
-        expected = f.read().decode('utf-8')
+        expected = f.read()
 
     actual = bt.quote_stack_traces(raw)
     assert actual == expected
