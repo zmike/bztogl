@@ -1,4 +1,4 @@
-import bt
+from bztogl import bt
 
 
 def _compare_quoted_backtraces(prefix):

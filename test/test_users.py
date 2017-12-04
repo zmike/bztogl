@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-import users
+from bztogl import users
 
 # NB. All names are randomly generated
 

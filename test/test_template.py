@@ -1,4 +1,4 @@
-import template
+from bztogl import template
 
 
 def test_bugzilla_url():

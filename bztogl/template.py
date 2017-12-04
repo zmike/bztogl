@@ -1,6 +1,6 @@
 import re
 
-import bt
+from . import bt
 
 # Note, the \n\ is to prevent trailing whitespace from being stripped by
 # people's editors. It is there intentionally.

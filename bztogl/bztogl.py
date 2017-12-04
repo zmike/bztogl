@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 #    Copyright 2017 Alberto Ruiz <aruiz@gnome.org>
 #    Copyright 2017 Philip Chimento <philip.chimento@gmail.com>
 
@@ -26,8 +24,7 @@ import json
 import bugzilla
 import gitlab
 
-import users
-import template
+from . import users, template
 
 NEEDINFO_LABEL = "2. Needs Information"
 KEYWORD_MAP = {
@@ -422,7 +419,3 @@ def main():
         count += 1
         sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
         processbug(bgo, target, user_cache, bzbug)
-
-
-if __name__ == '__main__':
-    main()

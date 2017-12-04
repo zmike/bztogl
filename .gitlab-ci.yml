@@ -7,5 +7,4 @@ lint:
 
 unittests:
   script:
-  - pip install pytest
-  - python -m pytest
+  - python setup.py pytest
