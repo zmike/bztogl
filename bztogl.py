@@ -20,6 +20,8 @@ import re
 import sys
 import argparse
 import urllib.parse
+import time
+import json
 
 import bugzilla
 import gitlab
@@ -69,27 +71,27 @@ KEYWORD_MAP = {
     "security": "1. Security"
 }
 
-
-class Target:
-    def __init__(self, token, product, target_product=None):
-        self.token = token
-        self.product = product
-        if target_product:
-            self.target_product = target_product
-        else:
-            self.target_product = "GNOME/" + product
+GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
 
 
-class GitLab(Target):
+class GitLab:
     GITLABURL = "https://gitlab-test.gnome.org/"
 
-    def __init__(self, token, product, target_product=None):
-        Target.__init__(self, token, product, target_product)
+    def __init__(self, token, product, target_product=None, automate=False):
         self.gl = None
+        self.token = token
+        self.product = product
+        self.target_product = target_product
+        self.automate = automate
 
     def connect(self):
         print("Connecting to %s" % self.GITLABURL)
         self.gl = gitlab.Gitlab(self.GITLABURL, self.token)
+        self.gl.auth()
+        # If not target product was given, set the project under the user
+        # namespace
+        if self.target_product is None:
+            self.target_product = self.gl.user.name + '/' + self.product
 
     def get_project(self):
         return self.gl.projects.get(self.target_product)
@@ -107,6 +109,62 @@ class GitLab(Target):
         if len(possible_users) == 1:
             return possible_users[0]
         return None
+
+    def remove_project(self, project):
+        try:
+            project.delete()
+        except Exception as e:
+            raise Exception("Could not remove project: {}".format(project))
+
+    def get_import_status(self, project):
+        url = (self.GITLABURL +
+               "api/v4/projects/{}".format(project.id))
+        self.gl.session.headers = {"PRIVATE-TOKEN": self.token}
+        ret = self.gl.session.get(url)
+        if ret.status_code != 200:
+            raise Exception("Could not get import status: {}".format(ret.text))
+
+        ret_json = json.loads(ret.text)
+        return ret_json.get('import_status')
+
+    def import_project(self):
+        import_url = GIT_ORIGIN_PREFIX + self.product
+        print('Importing project from ' + import_url +
+              ' to ' + self.target_product)
+
+        try:
+            project = self.get_project()
+        except Exception as e:
+            project = None
+
+        if project is not None:
+            print('##############################################')
+            print('#                  WARNING                   #')
+            print('##############################################')
+            print('THIS WILL DELETE YOUR PROJECT IN GITLAB.')
+            print('ARE YOU SURE YOU WANT TO CONTINUE? Y/N')
+
+            if not self.automate:
+                answer = input('')
+            else:
+                answer = 'Y'
+                print('Y (automated)')
+
+            if answer == 'Y':
+                self.remove_project(project)
+            else:
+                print('Bugs will be added to the existing project')
+                return
+
+        project = self.gl.projects.create({'name': self.product,
+                                           'import_url': import_url,
+                                           'visibility_level': 20})
+
+        import_status = self.get_import_status(project)
+        while(import_status == 'none'):
+            print('Importing project, status: ' + import_status)
+            time.sleep(1)
+            import_status = self.get_import_status(project)
 
 
 def bugzilla_url(bugid):
@@ -390,27 +448,34 @@ def options():
                     "products")
     parser.add_argument('--production',
                         help="target production instead of testing")
+    parser.add_argument('--recreate', action='store_true',
+                        help="remove the project at GitLab if it exists and \
+                              import the project from the original repository")
+    parser.add_argument('--automate', action='store_true',
+                        help="don't wait on user input and answer \'Y\' (yes) \
+                              to any question")
     parser.add_argument('--token', help="gitlab token API", required=True)
     parser.add_argument('--product', help="bugzilla product name",
                         required=True)
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
-    parser.add_argument('--target-product', help="product name for gitlab")
+    parser.add_argument('--target-product',
+                        help="product name for gitlab. If not provided \
+                              $user_namespace/$product will be used")
     return parser.parse_args()
 
 
 def main():
     args = options()
 
-    target = GitLab(args.token, args.product, args.target_product)
+    target = GitLab(args.token, args.product, args.target_product,
+                    args.automate)
     if args.production:
         target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
-    if not target.get_project():
-        print("Project {} not present in {}".format(target.target_product,
-                                                    args.target))
-        sys.exit(1)
+    if not args.target_product and args.recreate:
+        target.import_project()
 
     print("Connecting to bugzilla.gnome.org")
     if args.bz_user and args.bz_password:
