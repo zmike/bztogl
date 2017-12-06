@@ -433,7 +433,7 @@ def options():
     parser = argparse.ArgumentParser(
         description="Bugzilla migration helper for bugzilla.gnome.org "
                     "products")
-    parser.add_argument('--production',
+    parser.add_argument('--production', action='store_true',
                         help="target production instead of testing")
     parser.add_argument('--recreate', action='store_true',
                         help="remove the project at GitLab if it exists and \
