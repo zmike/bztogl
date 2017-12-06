@@ -441,6 +441,8 @@ def options():
     parser.add_argument('--recreate', action='store_true',
                         help="remove the project at GitLab if it exists and \
                               import the project from the original repository")
+    parser.add_argument('--only-import', action='store_true',
+                        help="only import the module, no migration of issues")
     parser.add_argument('--automate', action='store_true',
                         help="don't wait on user input and answer \'Y\' (yes) \
                               to any question")
@@ -466,6 +468,9 @@ def main():
     target.connect()
     if not args.target_product and args.recreate:
         target.import_project()
+
+    if args.only_import:
+        return
 
     print("Connecting to bugzilla.gnome.org")
     if args.bz_user and args.bz_password:
