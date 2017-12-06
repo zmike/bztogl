@@ -360,7 +360,8 @@ def processbug(bgo, target, user_cache, bzbug):
     if bzbug.status == 'NEEDINFO':
         labels += [NEEDINFO_LABEL]
 
-    labels.append('5. {}'.format(bzbug.component.title()))
+    if bzbug.component.lower() not in ('general', '.general'):
+        labels.append('5. {}'.format(bzbug.component.title()))
 
     for kw in bzbug.keywords:
         if kw in KEYWORD_MAP:
