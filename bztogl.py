@@ -27,6 +27,7 @@ import bugzilla
 import gitlab
 
 import bt
+import users
 
 # Note, the \n\ is to prevent trailing whitespace from being stripped by
 # people's editors. It is there intentionally.
@@ -187,39 +188,15 @@ def body_to_markdown_quote(body):
     return ">>>\n{}\n>>>\n".format(autolink_markdown(body))
 
 
-def id_to_name(bzid, user_cache):
-    if bzid.endswith("gnome.bugs"):
-        return bzid
-    return user_cache[bzid]
-
-
-def populate_user_cache(bgo, target, user_cache):
-    real_names = {}
-    for bzu in bgo.getusers(list(user_cache.keys())):
-        gitlab_user = target.find_user(bzu.email)
-        if gitlab_user is not None:
-            real_names[bzu.email] = '@' + gitlab_user.username
-        elif bzu.real_name:
-            # Heuristically remove "(not reading bugmail) or (not receiving
-            # bugmail)"
-            real_names[bzu.email] = re.sub(r' \(not .+ing bugmail\)', '',
-                                           bzu.real_name)
-        else:
-            real_names[bzu.email] = '{}..@..{}'.format(bzu.email[:3],
-                                                       bzu.email[-3:])
-
-    return real_names
-
-
 def initial_comment_to_issue_description(bug, text, user_cache):
     if not text:
         text = ""
 
     # Assignment of $PROJECT@gnome.bugs effectively means unassigned
     assigned_to = ""
-    if not bug.assigned_to.endswith("gnome.bugs"):
-        assigned_to = "**Assigned to {}**  \n".format(
-            id_to_name(bug.assigned_to, user_cache))
+    assignee = user_cache[bug.assigned_to]
+    if assignee is not None:
+        assigned_to = "**Assigned to {}**  \n".format(assignee.display_name())
 
     deps = ""
     if bug.depends_on:
@@ -234,19 +211,19 @@ def initial_comment_to_issue_description(bug, text, user_cache):
             blocks += "  * [Bug {}]({})\n".format(bugid, bugzilla_url(bugid))
 
     dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
-    return DESC_TEMPLATE.format(submitter=id_to_name(bug.creator, user_cache),
-                                assigned_to=assigned_to,
-                                id=bug.id,
-                                body=body_to_markdown_quote(text),
-                                dependencies=dependencies)
+    return DESC_TEMPLATE.format(
+        submitter=user_cache[bug.creator].display_name(),
+        assigned_to=assigned_to, id=bug.id, body=body_to_markdown_quote(text),
+        dependencies=dependencies)
 
 
 def bugzilla_migration_closing_comment(gl_issue):
     return MIGR_TEMPLATE.format(gl_issue.web_url)
 
 
-def processbug(bgo, target, bzbug):
+def processbug(bgo, target, user_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
+    # bzbug.cc
     # bzbug.id
     # bzbug.summary
     # bzbug.creator
@@ -376,14 +353,6 @@ def processbug(bgo, target, bzbug):
                                                   attachment_metadata)
         comments = comments[1:]
 
-    user_cache = {}
-
-    user_cache[bzbug.creator] = None
-    for comment in comments:
-        user_cache[comment['creator']] = None
-
-    user_cache = populate_user_cache(bgo, target, user_cache)
-
     summary = "[BZ#{}] {}".format(bzbug.id, bzbug.summary)
     description = initial_comment_to_issue_description(bzbug, desctext,
                                                        user_cache)
@@ -399,8 +368,8 @@ def processbug(bgo, target, bzbug):
                                 str(bzbug.creation_time))
 
     # Assign bug to actual account if exists
-    assignee = target.find_user(bzbug.assigned_to)
-    if assignee is not None:
+    assignee = user_cache[bzbug.assigned_to]
+    if assignee and assignee.id is not None:
         issue.assignee_id = assignee.id
 
     print("Migrating comments: ")
@@ -417,7 +386,7 @@ def processbug(bgo, target, bzbug):
 
         emoji, action, body = analyze_bugzilla_comment(comment,
                                                        attachment_metadata)
-        author = id_to_name(comment['author'], user_cache)
+        author = user_cache[comment['author']].display_name()
 
         issue.notes.create({
             'body': COMMENT_TEMPLATE.format(
@@ -426,6 +395,24 @@ def processbug(bgo, target, bzbug):
                 attachment=comment_attachment),
             'created_at': str(comment['creation_time'])
         })
+
+    # Do last, so that previous actions don't all send an email
+    for cc_email in bzbug.cc:
+        subscriber = user_cache[cc_email]
+        if subscriber and subscriber.id is not None:
+            try:
+                issue.subscribe(sudo=subscriber.username)
+            except gitlab.GitlabSubscribeError as e:
+                if e.response_code in (201, 304):
+                    # 201 == workaround for python-gitlab bug
+                    # https://github.com/python-gitlab/python-gitlab/pull/382
+                    # 304 == already subscribed
+                    continue
+                if e.response_code == 403:
+                    print("WARNING: Subscribing users requires admin. "
+                          "Subscribers will not be migrated.")
+                    break
+                raise e
 
     issue.save()
 
@@ -486,6 +473,8 @@ def main():
               "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
+    user_cache = users.UserCache(target, bgo)
+
     query = bgo.build_query(product=args.product)
     query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()
     print("Querying for open bugs for the '%s' product" % args.product)
@@ -498,7 +487,7 @@ def main():
     for bzbug in bzbugs:
         count += 1
         sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
-        processbug(bgo, target, bzbug)
+        processbug(bgo, target, user_cache, bzbug)
 
 
 if __name__ == '__main__':
