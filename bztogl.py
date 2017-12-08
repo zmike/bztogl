@@ -93,7 +93,7 @@ class GitLab:
         # namespace
         if self.target_product is None:
             self.target_product = self.gl.user.username + '/' + self.product
-            print("Using target product '{}' since --target_product was not provided".format(self.target_product))
+            print("Using target product '{}' since --target-product was not provided".format(self.target_product))
 
     def get_project(self):
         return self.gl.projects.get(self.target_product)
@@ -450,7 +450,7 @@ def options():
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
     parser.add_argument('--target-product',
-                        help="product name for gitlab. If not provided \
+                        help="product name for gitlab, like 'username/product'. If not provided, \
                               $user_namespace/$product will be used")
     return parser.parse_args()
 
@@ -459,6 +459,8 @@ def check_if_target_project_exists(target):
         target.get_project()
     except Exception as e:
         print("ERROR: Could not access the project `{}` - are you sure it exists?".format(target.target_product))
+        print("You can use the --target-product=username/project option if the project name\n\
+               is different from the Bugzilla product name.")
         exit(1)
 
 def main():
