@@ -92,7 +92,7 @@ class GitLab:
         # If not target product was given, set the project under the user
         # namespace
         if self.target_product is None:
-            self.target_product = self.gl.user.name + '/' + self.product
+            self.target_product = self.gl.user.username + '/' + self.product
             print("Using target product '{}' since --target_product was not provided".format(self.target_product))
 
     def get_project(self):
