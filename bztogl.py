@@ -454,6 +454,12 @@ def options():
                               $user_namespace/$product will be used")
     return parser.parse_args()
 
+def check_if_target_project_exists(target):
+    try:
+        target.get_project()
+    except Exception as e:
+        print("ERROR: Could not access the project `{}` - are you sure it exists?".format(target.target_product))
+        exit(1)
 
 def main():
     args = options()
@@ -464,6 +470,9 @@ def main():
         target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
+
+    check_if_target_project_exists(target)
+
     if not args.target_product and args.recreate:
         target.import_project()
 
