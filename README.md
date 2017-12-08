@@ -12,8 +12,8 @@ moved by a different tool.  This project, `bztogl`, provides that tool.
 # Requirements
 
 `bztogl` is a Python 3 script, and it requires the `bugzilla` and
-`python-gitlab` modules.  You can set up a virtualenv for these like
-this:
+`python-gitlab` modules.  You can set up a virtualenv (essentially a
+personal sandbox for Python modules) for these like this:
 
 ```sh
 mkdir ~/src/virtualenvs
