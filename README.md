@@ -104,7 +104,7 @@ You will get some output:
 
 ```
 Connecting to https://gitlab-test.gnome.org/
-Using target product 'username/myproject since --target_product was not provided
+Using target project 'username/myproject since --target-project was not provided
 Connecting to bugzilla.gnome.org
 WARNING: Bugzilla credentials were not provided, BZ bugs won't be closed and subscribers won't notice the migration
 Querying for open bugs for the 'myproject' product
@@ -126,6 +126,7 @@ If you get an error, check the following:
 `--product` option.
 
 * Is the Gitlab project name correct?  If it is different from
-Bugzilla's product name, you can use the `--target_product` option.
+Bugzilla's product name, you can use the
+`--target-project=username/project` option.
 
 [installation]: #installation
