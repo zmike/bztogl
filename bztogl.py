@@ -93,6 +93,7 @@ class GitLab:
         # namespace
         if self.target_product is None:
             self.target_product = self.gl.user.name + '/' + self.product
+            print("Using target product '{}' since --target_product was not provided".format(self.target_product))
 
     def get_project(self):
         return self.gl.projects.get(self.target_product)
