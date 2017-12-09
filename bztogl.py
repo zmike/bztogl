@@ -87,7 +87,7 @@ class GitLab:
 
     def connect(self):
         print("Connecting to %s" % self.GITLABURL)
-        self.gl = gitlab.Gitlab(self.GITLABURL, self.token)
+        self.gl = gitlab.Gitlab(self.GITLABURL, self.token, api_version=4)
         self.gl.auth()
         # If not target product was given, set the project under the user
         # namespace
@@ -101,12 +101,12 @@ class GitLab:
         return self.get_project().issues.create({
             'title': summary,
             'description': description,
-            'labels': ','.join(labels),
+            'labels': labels,
             'created_at': creation_time
         })
 
     def find_user(self, email):
-        possible_users = self.gl.users.search(email)
+        possible_users = self.gl.users.list(search=email)
         if len(possible_users) == 1:
             return possible_users[0]
         return None
@@ -159,10 +159,10 @@ class GitLab:
 
         project = self.gl.projects.create({'name': self.product,
                                            'import_url': import_url,
-                                           'visibility_level': 20})
+                                           'visibility': 'public'})
 
         import_status = self.get_import_status(project)
-        while(import_status == 'none'):
+        while(import_status != 'finished'):
             print('Importing project, status: ' + import_status)
             time.sleep(1)
             import_status = self.get_import_status(project)
