@@ -16,7 +16,7 @@ class TestUser:
     def test_display_name_with_gitlab_username(self):
         user = users.User(id=5, email='shaniya.clements@src.gnome.org',
                           real_name='Shaniya Clements', username='shaniya')
-        assert user.display_name() == '@shaniya'
+        assert user.display_name() == 'Shaniya Clements `@shaniya`'
 
     def test_display_name_with_no_gitlab_username(self):
         user = users.User(id=None, email='aarav.paul@src.gnome.org',

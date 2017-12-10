@@ -5,7 +5,8 @@ import re
 class User(collections.namedtuple('User', 'email username real_name id')):
     def display_name(self):
         if self.username is not None:
-            return '@' + self.username
+            real_name = (self.real_name + ' ') if self.real_name else ''
+            return real_name + '`@{}`'.format(self.username)
         elif self.real_name:
             return self.real_name
         return '{}..@..{}'.format(self.email[:3], self.email[-3:])
