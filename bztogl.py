@@ -416,7 +416,9 @@ def processbug(bgo, target, user_cache, bzbug):
                     break
                 raise e
 
-    issue.save()
+    # Workaround python-gitlab bug by providing redundant state_event
+    # https://github.com/python-gitlab/python-gitlab/pull/389
+    issue.save(state_event='reopen')
 
     print("New GitLab issue created from bugzilla bug "
           "{}: {}".format(bzbug.id, issue.web_url))
