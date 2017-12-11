@@ -26,7 +26,7 @@ class TestUser:
     def test_display_name_with_email_only(self):
         user = users.User(id=None, email='mariam.kane@src.gnome.org',
                           real_name=None, username=None)
-        assert user.display_name() == 'mar..@..org'
+        assert user.display_name() == 'mar..@..me.org'
 
 
 @pytest.fixture
