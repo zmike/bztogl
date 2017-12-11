@@ -93,7 +93,8 @@ class GitLab:
         # namespace
         if self.target_project is None:
             self.target_project = self.gl.user.username + '/' + self.product
-            print("Using target project '{}' since --target-project was not provided".format(self.target_project))
+            print("Using target project '{}' since --target-project was not \
+                   provided".format(self.target_project))
 
     def get_project(self):
         return self.gl.projects.get(self.target_project)
@@ -437,7 +438,8 @@ def options():
         description="Bugzilla migration helper for bugzilla.gnome.org "
                     "products")
     parser.add_argument('--production', action='store_true',
-                        help="target production (gitlab.gnome.org) instead of testing (gitlab-test.gnome.org)")
+                        help="target production (gitlab.gnome.org) instead \
+                              of testing (gitlab-test.gnome.org)")
     parser.add_argument('--recreate', action='store_true',
                         help="remove the project at GitLab if it exists and \
                               import the project from the original repository")
@@ -450,7 +452,8 @@ def options():
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
     parser.add_argument('--target-project', metavar="USERNAME/PROJECT",
-                        help="project name for gitlab, like 'username/project'. If not provided, \
+                        help="project name for gitlab, like \
+                              'username/project'. If not provided, \
                               $user_namespace/$bugzilla_product will be used")
     return parser.parse_args()
 
@@ -458,9 +461,11 @@ def check_if_target_project_exists(target):
     try:
         target.get_project()
     except Exception as e:
-        print("ERROR: Could not access the project `{}` - are you sure it exists?".format(target.target_project))
-        print("You can use the --target-project=username/project option if the project name\n\
-               is different from the Bugzilla product name.")
+        print("ERROR: Could not access the project `{}` - are you sure \
+               it exists?".format(target.target_project))
+        print("You can use the --target-project=username/project option if \
+               the project name\n\is different from the Bugzilla \
+               product name.")
         exit(1)
 
 def main():
