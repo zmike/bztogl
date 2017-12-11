@@ -457,6 +457,7 @@ def options():
                               $user_namespace/$bugzilla_product will be used")
     return parser.parse_args()
 
+
 def check_if_target_project_exists(target):
     try:
         target.get_project()
@@ -467,6 +468,7 @@ def check_if_target_project_exists(target):
                the project name\n\is different from the Bugzilla \
                product name.")
         exit(1)
+
 
 def main():
     args = options()
