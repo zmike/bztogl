@@ -78,24 +78,26 @@ GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
 class GitLab:
     GITLABURL = "https://gitlab-test.gnome.org/"
 
-    def __init__(self, token, product, target_product=None, automate=False):
+    def __init__(self, token, product, target_project=None, automate=False):
         self.gl = None
         self.token = token
         self.product = product
-        self.target_product = target_product
+        self.target_project = target_project
         self.automate = automate
 
     def connect(self):
         print("Connecting to %s" % self.GITLABURL)
         self.gl = gitlab.Gitlab(self.GITLABURL, self.token, api_version=4)
         self.gl.auth()
-        # If not target product was given, set the project under the user
+        # If not target project was given, set the project under the user
         # namespace
-        if self.target_product is None:
-            self.target_product = self.gl.user.name + '/' + self.product
+        if self.target_project is None:
+            self.target_project = self.gl.user.username + '/' + self.product
+            print("Using target project '{}' since --target-project was not \
+                   provided".format(self.target_project))
 
     def get_project(self):
-        return self.gl.projects.get(self.target_product)
+        return self.gl.projects.get(self.target_project)
 
     def create_issue(self, id, summary, description, labels, creation_time):
         return self.get_project().issues.create({
@@ -131,7 +133,7 @@ class GitLab:
     def import_project(self):
         import_url = GIT_ORIGIN_PREFIX + self.product
         print('Importing project from ' + import_url +
-              ' to ' + self.target_product)
+              ' to ' + self.target_project)
 
         try:
             project = self.get_project()
@@ -438,7 +440,8 @@ def options():
         description="Bugzilla migration helper for bugzilla.gnome.org "
                     "products")
     parser.add_argument('--production', action='store_true',
-                        help="target production instead of testing")
+                        help="target production (gitlab.gnome.org) instead \
+                              of testing (gitlab-test.gnome.org)")
     parser.add_argument('--recreate', action='store_true',
                         help="remove the project at GitLab if it exists and \
                               import the project from the original repository")
@@ -452,22 +455,38 @@ def options():
                         required=True)
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
-    parser.add_argument('--target-product',
-                        help="product name for gitlab. If not provided \
-                              $user_namespace/$product will be used")
+    parser.add_argument('--target-project', metavar="USERNAME/PROJECT",
+                        help="project name for gitlab, like \
+                              'username/project'. If not provided, \
+                              $user_namespace/$bugzilla_product will be used")
     return parser.parse_args()
+
+
+def check_if_target_project_exists(target):
+    try:
+        target.get_project()
+    except Exception as e:
+        print("ERROR: Could not access the project `{}` - are you sure \
+               it exists?".format(target.target_project))
+        print("You can use the --target-project=username/project option if \
+               the project name\n\is different from the Bugzilla \
+               product name.")
+        exit(1)
 
 
 def main():
     args = options()
 
-    target = GitLab(args.token, args.product, args.target_product,
+    target = GitLab(args.token, args.product, args.target_project,
                     args.automate)
     if args.production:
         target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
-    if not args.target_product and args.recreate:
+
+    check_if_target_project_exists(target)
+
+    if not args.target_project and args.recreate:
         target.import_project()
 
     if args.only_import:
