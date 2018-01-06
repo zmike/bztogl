@@ -44,15 +44,32 @@ def cache():
         'jbriggs@src.gnome.org': BZU('jbriggs@src.gnome.org',
                                      'Jeffrey (not reading bugmail) Briggs'),
     }
+    bugzilla_components_details = {
+        'zenity': {
+            'docs': {
+                'initialqacontact': 'zenity-maint@gnome.bugs',
+                'initialowner': 'gnome-user-docs-maint@gnome.bugs',
+                'description': 'For bugs in the documentation of zenity',
+            },
+            'general': {
+                'initialqacontact': 'zenity-maint@gnome.bugs',
+                'initialowner': 'zenity-maint@gnome.bugs',
+                'description': 'All bugs with the software should go here',
+            },
+        },
+    }
     bugzilla = mock.Mock()
     bugzilla.getuser = mock.Mock(side_effect=bugzilla_users.get)
+    bugzilla.getcomponentsdetails = \
+        mock.Mock(side_effect=bugzilla_components_details.get)
 
-    return users.UserCache(gitlab, bugzilla)
+    return users.UserCache(gitlab, bugzilla, 'zenity')
 
 
 class TestUserCache:
-    def test_gnome_bugs_user_is_not_treated_as_real_user(self, cache):
-        assert cache['gjs-maint@gnome.bugs'] is None
+    def test_default_assignee_is_not_treated_as_real_user(self, cache):
+        assert cache['zenity-maint@gnome.bugs'] is None
+        assert cache['gnome-user-docs-maint@gnome.bugs'] is None
 
     def test_lookup_gitlab_user(self, cache):
         user = cache['jsparks@src.gnome.org']

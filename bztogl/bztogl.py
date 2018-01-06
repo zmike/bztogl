@@ -404,7 +404,7 @@ def main():
               "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
-    user_cache = users.UserCache(target, bgo)
+    user_cache = users.UserCache(target, bgo, args.product)
 
     query = bgo.build_query(product=args.product)
     query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()

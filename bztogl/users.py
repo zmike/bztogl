@@ -13,15 +13,19 @@ class User(collections.namedtuple('User', 'email username real_name id')):
 
 
 class UserCache:
-    def __init__(self, target, bugzilla):
+    def __init__(self, target, bugzilla, product):
         self._target = target
         self._bugzilla = bugzilla
         self._cache = {}
 
+        components = self._bugzilla.getcomponentsdetails(product)
+        self._default_emails = set(c['initialowner']
+                                   for c in components.values())
+
     def __getitem__(self, email):
-        # some_project@gnome.bugs is the default assignee, it doesn't
-        # correspond to a GitLab user and effectively means unassigned
-        if email.endswith('gnome.bugs'):
+        # Default assignees on GNOME projects don't correspond to a GitLab
+        # user, and effectively mean unassigned
+        if email in self._default_emails:
             return None
 
         if email in self._cache:
