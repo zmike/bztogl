@@ -50,6 +50,25 @@ def _autolink_markdown(text):
     text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
     # Quote stack traces as preformatted text
     text = bt.quote_stack_traces(text)
+    # Quote XML-like tags which would otherwise be stripped by GitLab
+    tags_outside_quotes = re.compile(r"""
+        (
+            ^[^`]*                    # An initial string with no backticks
+            (?:                       # Then zero or more of...
+                (?:
+                    \n```.*?\n```     # A matched pair of triple backticks
+                |
+                    `[^`]+`           # Or a matched pair of backticks
+                )
+                [^`]*?                # Followed by a string with no backticks
+            )*?                       # These are skipped over before we find
+        )
+        (\<\/?[a-zA-Z0-9_="' -]*?\>)  # ...an XML-like tag
+        """, re.VERBOSE)
+    nsubs = 1
+    while nsubs > 0:
+        # Matches may overlap, so we have to keep substituting until none left
+        text, nsubs = tags_outside_quotes.subn('\\1`\\2`', text)
     return text
 
 

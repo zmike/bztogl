@@ -42,6 +42,26 @@ Here's some text after the stack trace.
 """)
 
 
+def test_xml_tags_are_quoted():
+    _check_processed_markdown('Here is a <xml>tag</xml>',
+                              'Here is a `<xml>`tag`</xml>`')
+
+
+def test_xml_tags_already_inside_single_backticks_are_not_quoted():
+    text = 'Here is an already escaped `<xml>` tag'
+    _check_processed_markdown(text, text)
+
+
+def test_xml_tags_already_inside_code_blocks_are_not_quoted():
+    text = """
+Here's some text.
+```
+Here's a <tag style="xml"> inside a code block.
+```
+"""
+    _check_processed_markdown(text, text)
+
+
 def test_quoting_text_body():
     text = "Here's a paragraph.\n\nHere's another one."
     processed_text = template._body_to_markdown_quote(text)
