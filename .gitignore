@@ -3,3 +3,4 @@
 .eggs
 *.egg-info
 *.pyc
+users_cache

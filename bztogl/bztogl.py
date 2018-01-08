@@ -15,6 +15,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import os
 import sys
 import argparse
 import urllib.parse
@@ -68,11 +69,11 @@ class GitLab:
             'created_at': creation_time
         })
 
-    def find_user(self, email):
-        possible_users = self.gl.users.list(search=email)
-        if len(possible_users) == 1:
-            return possible_users[0]
-        return None
+    def get_all_users(self):
+        return self.gl.users.list(all=True)
+
+    def find_user(self, user_id):
+        return self.gl.users.get(user_id)
 
     def remove_project(self, project):
         try:
@@ -419,3 +420,11 @@ def main():
         count += 1
         sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
         processbug(bgo, target, user_cache, bzbug)
+
+    if os.path.exists('users_cache'):
+        print('IMPORTANT: Remove the file \'users_cache\' after use, it \
+contains sensitive data')
+
+
+if __name__ == '__main__':
+    main()
