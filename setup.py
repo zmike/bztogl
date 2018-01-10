@@ -22,7 +22,7 @@ setup(
     author='GNOME',
     url='https://gitlab.gnome.org/External/bugzilla-to-gitlab-migrator',
 
-    py_modules=['bztogl'],
+    packages=['bztogl'],
     entry_points={
         'console_scripts': ['bztogl=bztogl.bztogl:main'],
     },

@@ -25,6 +25,8 @@ source ~/src/virtualenvs/bztogl/bin/activate
 # at this point your shell prompt will change to something like "(bztogl) $_"
 pip install python-bugzilla
 pip install python-gitlab
+pip install --user -e .
+# or use "python setup.py install" instead of the above
 ```
 
 # What `bztogl` does
@@ -97,7 +99,7 @@ virtualenv activated with the `activate` command form that example.
 Now you can run this:
 
 ```sh
-./bztogl.py --token <your_api_token> --product myproject
+bztogl --token <your_api_token> --product myproject
 ```
 
 You will get some output:

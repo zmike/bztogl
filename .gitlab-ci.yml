@@ -1,5 +1,10 @@
 image: python:3.6
 
+sanitycheck:
+  script:
+  - python setup.py install
+  - bztogl --help
+
 lint:
   script:
   - pip install flake8
