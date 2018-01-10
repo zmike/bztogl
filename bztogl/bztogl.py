@@ -335,7 +335,7 @@ def processbug(bgo, target, user_cache, bzbug):
         print("Adding a comment in bugzilla and closing the bug there")
         # TODO: Create a resolution for this specific case? MIGRATED or FWDED?
         bz.update_bugs(bzbug.bug_id, bz.build_update(
-            comment=template.bugzilla_migration_closing_comment(issue),
+            comment=template.render_bugzilla_migration_comment(issue),
             status='RESOLVED',
             resolution='OBSOLETE'))
 
