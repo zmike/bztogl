@@ -389,7 +389,8 @@ def main():
 
     target.connect()
 
-    check_if_target_project_exists(target)
+    if not args.recreate and args.target_project is not None:
+        check_if_target_project_exists(target)
 
     if not args.target_project and args.recreate:
         target.import_project()
