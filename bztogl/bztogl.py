@@ -406,8 +406,6 @@ def main():
               "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
-    user_cache = users.UserCache(target, bgo, args.product)
-
     query = bgo.build_query(product=args.product)
     query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()
     print("Querying for open bugs for the '%s' product" % args.product)
@@ -415,12 +413,16 @@ def main():
     print("{} bugs found".format(len(bzbugs)))
     count = 0
 
-    # TODO: Check if there were bugs from this module already filed (i.e. use a
-    # tag to mark these)
-    for bzbug in bzbugs:
-        count += 1
-        sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
-        processbug(bgo, target, user_cache, bzbug)
+    # There are products without Bugzilla tracking
+    if len(bzbugs) != 0:
+        user_cache = users.UserCache(target, bgo, args.product)
+
+        # TODO: Check if there were bugs from this module already filed (i.e.
+        # use a tag to mark these)
+        for bzbug in bzbugs:
+            count += 1
+            sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
+            processbug(bgo, target, user_cache, bzbug)
 
     if os.path.exists('users_cache'):
         print('IMPORTANT: Remove the file \'users_cache\' after use, it \
