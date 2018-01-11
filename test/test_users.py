@@ -8,7 +8,7 @@ from bztogl import users
 # NB. All names are randomly generated
 
 # Mock GitLab and Bugzilla user records
-GLU = collections.namedtuple('GLU', 'id name username')
+GLU = collections.namedtuple('GLU', 'id name username email')
 BZU = collections.namedtuple('BZU', 'email real_name')
 
 
@@ -29,10 +29,25 @@ class TestUser:
         assert user.display_name() == 'mar..@..me.org'
 
 
+def mock_retrieve_gitlab_emails_cache():
+    gitlab_emails_cache = \
+        {
+            'jsparks@src.gnome.org': 1,
+        }
+
+    return gitlab_emails_cache
+
+
+def mock_save_gitlab_emails_cache():
+    pass
+
+
 @pytest.fixture
-def cache():
+@mock.patch.object(users.UserCache, '_retrieve_gitlab_emails_cache')
+@mock.patch.object(users.UserCache, '_save_gitlab_emails_cache')
+def cache(save_mock_method, retrieve_mock_method):
     gitlab_users = {
-        'jsparks@src.gnome.org': GLU(1, 'Jamar Sparks', 'jamars'),
+        1: GLU(1, 'Jamar Sparks', 'jamars', 'jsparks@src.gnome.org'),
     }
     gitlab = mock.Mock()
     gitlab.find_user = mock.Mock(side_effect=gitlab_users.get)
@@ -62,6 +77,10 @@ def cache():
     bugzilla.getuser = mock.Mock(side_effect=bugzilla_users.get)
     bugzilla.getcomponentsdetails = \
         mock.Mock(side_effect=bugzilla_components_details.get)
+
+    save_mock_method.return_value = None
+    retrieve_mock_method.return_value = mock_retrieve_gitlab_emails_cache()
+    save_mock_method.return_value = mock_save_gitlab_emails_cache()
 
     return users.UserCache(gitlab, bugzilla, 'zenity')
 
