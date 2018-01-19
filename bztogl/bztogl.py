@@ -21,6 +21,7 @@ import argparse
 import urllib.parse
 import time
 import json
+import itertools
 
 import bugzilla
 import gitlab
@@ -305,7 +306,7 @@ def processbug(bgo, target, user_cache, bzbug):
         })
 
     # Do last, so that previous actions don't all send an email
-    for cc_email in bzbug.cc:
+    for cc_email in itertools.chain(bzbug.cc, [bzbug.creator]):
         subscriber = user_cache[cc_email]
         if subscriber and subscriber.id is not None:
             try:
