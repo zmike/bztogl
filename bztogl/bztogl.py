@@ -335,7 +335,7 @@ def processbug(bgo, target, user_cache, bzbug):
         print("Adding a comment in bugzilla and closing the bug there")
         # TODO: Create a resolution for this specific case? MIGRATED or FWDED?
         bz.update_bugs(bzbug.bug_id, bz.build_update(
-            comment=template.bugzilla_migration_closing_comment(issue),
+            comment=template.render_bugzilla_migration_comment(issue),
             status='RESOLVED',
             resolution='OBSOLETE'))
 
@@ -389,7 +389,8 @@ def main():
 
     target.connect()
 
-    check_if_target_project_exists(target)
+    if not args.recreate and args.target_project is not None:
+        check_if_target_project_exists(target)
 
     if not args.target_project and args.recreate:
         target.import_project()
@@ -406,8 +407,6 @@ def main():
               "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
-    user_cache = users.UserCache(target, bgo, args.product)
-
     query = bgo.build_query(product=args.product)
     query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()
     print("Querying for open bugs for the '%s' product" % args.product)
@@ -415,12 +414,16 @@ def main():
     print("{} bugs found".format(len(bzbugs)))
     count = 0
 
-    # TODO: Check if there were bugs from this module already filed (i.e. use a
-    # tag to mark these)
-    for bzbug in bzbugs:
-        count += 1
-        sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
-        processbug(bgo, target, user_cache, bzbug)
+    # There are products without Bugzilla tracking
+    if len(bzbugs) != 0:
+        user_cache = users.UserCache(target, bgo, args.product)
+
+        # TODO: Check if there were bugs from this module already filed (i.e.
+        # use a tag to mark these)
+        for bzbug in bzbugs:
+            count += 1
+            sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
+            processbug(bgo, target, user_cache, bzbug)
 
     if os.path.exists('users_cache'):
         print('IMPORTANT: Remove the file \'users_cache\' after use, it \
