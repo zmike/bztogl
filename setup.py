@@ -24,10 +24,11 @@ setup(
 
     packages=['bztogl'],
     entry_points={
-        'console_scripts': ['bztogl=bztogl.bztogl:main'],
+        'console_scripts': ['bztogl=bztogl.bztogl:main',
+                            'phabtogl=bztogl.phabtogl:main'],
     },
 
-    install_requires=['python-bugzilla', 'python-gitlab'],
+    install_requires=['python-bugzilla', 'python-gitlab', 'phabricator'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
 
