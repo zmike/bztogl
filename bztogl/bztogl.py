@@ -14,19 +14,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
-import os
-import sys
 import argparse
-import urllib.parse
-import time
-import json
 import itertools
+import os
+import re
+import sys
+import urllib.parse
 
 import bugzilla
-import gitlab
 
-from . import users, template
+from . import common, template, users
 
 NEEDINFO_LABEL = "2. Needs Information"
 KEYWORD_MAP = {
