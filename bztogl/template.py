@@ -8,7 +8,7 @@ from . import bt
 DESC_TEMPLATE = """## Submitted by {submitter}  \n\
 {assigned_to}
 **[Link to original bug (#{id})]\
-(https://bugzilla.gnome.org/show_bug.cgi?id={id})**  \n\
+({link_url}{id})**  \n\
 ## Description
 {body}
 
@@ -75,10 +75,13 @@ def _autolink_markdown(text):
 def _body_to_markdown_quote(body):
     if not body:
         return '\n'
-    return ">>>\n{}\n>>>\n".format(_autolink_markdown(body))
+    return ">>>\n{}\n>>>\n".format(body)
 
 
-def render_issue_description(bug, text, user_cache):
+def render_issue_description(
+        bug, text, user_cache,
+        importing_address="https://bugzilla.gnome.org/show_bug.cgi?id=",
+        bug_url_function=_bugzilla_url):
     if not text:
         text = ""
 
@@ -91,18 +94,26 @@ def render_issue_description(bug, text, user_cache):
     if bug.depends_on:
         deps += "### Depends on\n"
         for bugid in bug.depends_on:
-            deps += "  * [Bug {}]({})\n".format(bugid, _bugzilla_url(bugid))
+            deps += "  * [Bug {}]({})\n".format(bugid, bug_url_function(bugid))
 
     blocks = ""
     if bug.blocks:
         blocks += "### Blocking\n"
         for bugid in bug.blocks:
-            blocks += "  * [Bug {}]({})\n".format(bugid, _bugzilla_url(bugid))
+            blocks += "  * [Bug {}]({})\n".format(bugid,
+                                                  bug_url_function(bugid))
 
     dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
+    if bug_url_function == _bugzilla_url:
+        body = _autolink_markdown(text)
+    else:
+        body = text
+
     return DESC_TEMPLATE.format(
+        link_url=importing_address,
         submitter=user_cache[bug.creator].display_name(),
-        assigned_to=assigned_to, id=bug.id, body=_autolink_markdown(text),
+        assigned_to=assigned_to, id=bug.id,
+        body=body,
         dependencies=dependencies)
 
 
@@ -110,10 +121,17 @@ def render_bugzilla_migration_comment(gl_issue):
     return MIGR_TEMPLATE.format(gl_issue.web_url)
 
 
-def render_comment(emoji, author, action, body, attachment):
+def render_comment(emoji, author, action, body, attachment,
+                   bug_url_function=_bugzilla_url):
+
+    if bug_url_function == _bugzilla_url and body:
+        body = _autolink_markdown(body)
+
+    body = _body_to_markdown_quote(body)
+
     return COMMENT_TEMPLATE.format(
         emoji=emoji, author=author, action=action,
-        body=_body_to_markdown_quote(body),
+        body=body,
         attachment=attachment)
 
 

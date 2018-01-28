@@ -14,19 +14,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
-import os
-import sys
 import argparse
-import urllib.parse
-import time
-import json
 import itertools
+import os
+import re
+import sys
+import urllib.parse
 
 import bugzilla
 import gitlab
 
-from . import users, template
+from . import common, template, users
 
 NEEDINFO_LABEL = "2. Needs Information"
 KEYWORD_MAP = {
@@ -36,101 +34,6 @@ KEYWORD_MAP = {
 }
 
 GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
-
-
-class GitLab:
-    GITLABURL = "https://gitlab-test.gnome.org/"
-
-    def __init__(self, token, product, target_project=None, automate=False):
-        self.gl = None
-        self.token = token
-        self.product = product
-        self.target_project = target_project
-        self.automate = automate
-
-    def connect(self):
-        print("Connecting to %s" % self.GITLABURL)
-        self.gl = gitlab.Gitlab(self.GITLABURL, self.token, api_version=4)
-        self.gl.auth()
-        # If not target project was given, set the project under the user
-        # namespace
-        if self.target_project is None:
-            self.target_project = self.gl.user.username + '/' + self.product
-            print("Using target project '{}' since --target-project was not \
-                   provided".format(self.target_project))
-
-    def get_project(self):
-        return self.gl.projects.get(self.target_project)
-
-    def create_issue(self, id, summary, description, labels, creation_time):
-        return self.get_project().issues.create({
-            'title': summary,
-            'description': description,
-            'labels': labels,
-            'created_at': creation_time
-        })
-
-    def get_all_users(self):
-        return self.gl.users.list(all=True)
-
-    def find_user(self, user_id):
-        return self.gl.users.get(user_id)
-
-    def remove_project(self, project):
-        try:
-            project.delete()
-        except Exception as e:
-            raise Exception("Could not remove project: {}".format(project))
-
-    def get_import_status(self, project):
-        url = (self.GITLABURL +
-               "api/v4/projects/{}".format(project.id))
-        self.gl.session.headers = {"PRIVATE-TOKEN": self.token}
-        ret = self.gl.session.get(url)
-        if ret.status_code != 200:
-            raise Exception("Could not get import status: {}".format(ret.text))
-
-        ret_json = json.loads(ret.text)
-        return ret_json.get('import_status')
-
-    def import_project(self):
-        import_url = GIT_ORIGIN_PREFIX + self.product
-        print('Importing project from ' + import_url +
-              ' to ' + self.target_project)
-
-        try:
-            project = self.get_project()
-        except Exception as e:
-            project = None
-
-        if project is not None:
-            print('##############################################')
-            print('#                  WARNING                   #')
-            print('##############################################')
-            print('THIS WILL DELETE YOUR PROJECT IN GITLAB.')
-            print('ARE YOU SURE YOU WANT TO CONTINUE? Y/N')
-
-            if not self.automate:
-                answer = input('')
-            else:
-                answer = 'Y'
-                print('Y (automated)')
-
-            if answer == 'Y':
-                self.remove_project(project)
-            else:
-                print('Bugs will be added to the existing project')
-                return
-
-        project = self.gl.projects.create({'name': self.product,
-                                           'import_url': import_url,
-                                           'visibility': 'public'})
-
-        import_status = self.get_import_status(project)
-        while(import_status != 'finished'):
-            print('Importing project, status: ' + import_status)
-            time.sleep(1)
-            import_status = self.get_import_status(project)
 
 
 def processbug(bgo, target, user_cache, bzbug):
@@ -382,8 +285,8 @@ def check_if_target_project_exists(target):
 def main():
     args = options()
 
-    target = GitLab(args.token, args.product, args.target_project,
-                    args.automate)
+    target = common.GitLab(args.token, args.product, args.target_project,
+                           args.automate)
     if args.production:
         target.GITLABURL = "https://gitlab.gnome.org/"
 
@@ -400,8 +303,8 @@ def main():
 
     print("Connecting to bugzilla.gnome.org")
     if args.bz_user and args.bz_password:
-        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", args.bz_user,
-                                args.bz_password)
+        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org",
+                                args.bz_user, args.bz_password)
     else:
         print("WARNING: Bugzilla credentials were not provided, BZ bugs won't "
               "be closed and subscribers won't notice the migration")

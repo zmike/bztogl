@@ -4,6 +4,7 @@ sanitycheck:
   script:
   - python setup.py install
   - bztogl --help
+  - phabtogl --help
 
 lint:
   script:
