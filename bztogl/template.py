@@ -109,9 +109,13 @@ def render_issue_description(
     else:
         body = text
 
+    try:
+        submitter = user_cache[bug.creator].display_name()
+    except AttributeError:
+        submitter = 'an unknown user'
+
     return DESC_TEMPLATE.format(
-        link_url=importing_address,
-        submitter=user_cache[bug.creator].display_name(),
+        link_url=importing_address, submitter=submitter,
         assigned_to=assigned_to, id=bug.id,
         body=body,
         dependencies=dependencies)

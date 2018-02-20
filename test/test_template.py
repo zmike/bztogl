@@ -1,4 +1,9 @@
+import collections
+
 from bztogl import template
+
+
+Bug = collections.namedtuple('Bug', 'id creator assigned_to blocks depends_on')
 
 
 def test_bugzilla_url():
@@ -22,6 +27,12 @@ def test_bug_autolink_is_preserved():
 def test_spurious_gitlab_comment_links_are_removed():
     _check_processed_markdown('Comment #3 precedes comment #4',
                               'Comment 3 precedes comment 4')
+
+
+def test_bug_without_creator_is_handled():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None)
+    user_cache = collections.defaultdict(lambda: None)
+    template.render_issue_description(bug, 'Text body', user_cache)
 
 
 def test_stack_traces_are_quoted():
