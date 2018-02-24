@@ -229,8 +229,12 @@ class Phab:
 
         for filelink in re.findall(Phab.FILES_REGEX, markdown):
             fileid = filelink.strip("{F").strip("}")
-            markdown = markdown.replace(
-                filelink, self.migrate_attachment(fileid))
+            try:
+                markdown = markdown.replace(
+                        filelink, self.migrate_attachment(fileid))
+            except phabricator.APIError:
+                print("WARNING: Could not migrate file: %s" % filelink)
+                pass
 
         # Prevent spurious links to other GitLab issues
         markdown = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', markdown)
