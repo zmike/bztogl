@@ -73,7 +73,7 @@ class PhabGitLab(common.GitLab):
         super().__init__(token, product, target_project, automate)
         self.close_tasks = close_tasks
 
-    def import_from_phab(self, phab):
+    def import_from_phab(self, phab, start_at):
         """Imports project tasks from phabricator"""
 
         if self.target_project:
@@ -82,6 +82,9 @@ class PhabGitLab(common.GitLab):
             projname = self.project
 
         for _id, task in sorted(phab.tasks.items()):
+            if start_at and _id < start_at:
+                continue
+
             description = \
                 template.render_issue_description(
                     task, phab.escape_markdown(
@@ -437,6 +440,9 @@ def options():
                         help="project name for gitlab, like \
                               'username/project'. If not provided, \
                               $user_namespace/$bugzilla_product will be used")
+    parser.add_argument('--start-at',
+                        help="The ID of the first task to import",
+                        type=int)
     return parser.parse_args()
 
 
@@ -471,7 +477,7 @@ def main():
     phab = Phab(args, target)
 
     if phab.tasks:
-        target.import_from_phab(phab)
+        target.import_from_phab(phab, args.start_at)
 
 
 if __name__ == '__main__':
