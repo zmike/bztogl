@@ -1,4 +1,5 @@
 import re
+import urllib
 
 from . import bt
 
@@ -17,6 +18,7 @@ DESC_TEMPLATE = """## Submitted by {submitter}  \n\
 
 DEPENDENCIES_TEMPLATE = """{depends_on}
 {blocks}
+{see_also}
 """
 
 COMMENT_TEMPLATE = """:{emoji}: **{author}** {action}:
@@ -103,7 +105,28 @@ def render_issue_description(
             blocks += "  * [Bug {}]({})\n".format(bugid,
                                                   bug_url_function(bugid))
 
-    dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps, blocks=blocks)
+    see_also = ""
+    if bug.see_also:
+        see_also += "### See also\n"
+        for url in bug.see_also:
+            is_bz = False
+            try:
+                bug_url = urllib.parse.urlparse(url)
+                query = urllib.parse.parse_qs(bug_url.query)
+            except Exception as e:
+                pass
+            else:
+                ids = query.get('id', [])
+                if bug_url.netloc == 'bugzilla.gnome.org' and ids:
+                    is_bz = True
+                    see_also += "  * [Bug {}]({})\n".format(ids[0], url)
+
+            if not is_bz:
+                see_also += "  * {}\n".format(url)
+
+    dependencies = DEPENDENCIES_TEMPLATE.format(depends_on=deps,
+                                                blocks=blocks,
+                                                see_also=see_also)
     if bug_url_function == _bugzilla_url:
         body = _autolink_markdown(text)
     else:

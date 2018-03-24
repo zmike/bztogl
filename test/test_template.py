@@ -3,7 +3,9 @@ import collections
 from bztogl import template
 
 
-Bug = collections.namedtuple('Bug', 'id creator assigned_to blocks depends_on')
+Bug = collections.namedtuple(
+    'Bug', 'id creator assigned_to blocks depends_on see_also'
+)
 
 
 def test_bugzilla_url():
@@ -30,7 +32,7 @@ def test_spurious_gitlab_comment_links_are_removed():
 
 
 def test_bug_without_creator_is_handled():
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None)
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None)
     user_cache = collections.defaultdict(lambda: None)
     template.render_issue_description(bug, 'Text body', user_cache)
 
@@ -82,3 +84,44 @@ Here's a paragraph.
 Here's another one.
 >>>
 """
+
+
+def test_no_see_also():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None)
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'See also' not in description
+
+
+def test_empty_see_also():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [])
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'See also' not in description
+
+
+def test_bz_see_also():
+    bug_url = 'https://bugzilla.gnome.org/show_bug.cgi?id=792388'
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [bug_url])
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'See also' in description
+    assert 'Bug 792388' in description
+    assert bug_url in description
+
+
+def test_bogus_see_also():
+    bug_url = 'my hovercraft is full of eels'
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [bug_url])
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'See also' in description
+    assert bug_url in description

@@ -46,6 +46,7 @@ def processbug(bgo, target, user_cache, bzbug):
     # bzbug.target_milestone
     # bzbug.blocks
     # bzbug.depends_on
+    # bzbug.see_also
     # bzbug.assigned_to
 
     def get_attachments_metadata(self):
