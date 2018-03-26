@@ -23,10 +23,10 @@ mkdir ~/src/virtualenvs
 virtualenv ~/src/virtualenvs/bztogl
 source ~/src/virtualenvs/bztogl/bin/activate
 # at this point your shell prompt will change to something like "(bztogl) $_"
-pip install python-bugzilla
-pip install python-gitlab
-pip install --user -e .
-# or use "python setup.py install" instead of the above
+pip3 install python-bugzilla
+pip3 install python-gitlab
+pip3 install --user -e .
+# or use "python3 setup.py install --user" instead of the above
 ```
 
 # What `bztogl` does
