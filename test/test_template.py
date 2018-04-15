@@ -4,7 +4,7 @@ from bztogl import template
 
 
 Bug = collections.namedtuple(
-    'Bug', 'id creator assigned_to blocks depends_on see_also'
+    'Bug', 'id creator assigned_to blocks depends_on see_also version'
 )
 
 
@@ -32,7 +32,7 @@ def test_spurious_gitlab_comment_links_are_removed():
 
 
 def test_bug_without_creator_is_handled():
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None)
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None, None)
     user_cache = collections.defaultdict(lambda: None)
     template.render_issue_description(bug, 'Text body', user_cache)
 
@@ -86,8 +86,35 @@ Here's another one.
 """
 
 
+def test_empty_version():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [], None)
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'Version:' not in description
+
+
+def test_master_version():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [], 'master')
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'Version:' not in description
+
+
+def test_other_version():
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [], '1.0')
+    user_cache = collections.defaultdict(lambda: None)
+    description = template.render_issue_description(bug,
+                                                    'Text body',
+                                                    user_cache)
+    assert 'Version: 1.0' in description
+
+
 def test_no_see_also():
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None)
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, None, None)
     user_cache = collections.defaultdict(lambda: None)
     description = template.render_issue_description(bug,
                                                     'Text body',
@@ -96,7 +123,7 @@ def test_no_see_also():
 
 
 def test_empty_see_also():
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [])
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [], None)
     user_cache = collections.defaultdict(lambda: None)
     description = template.render_issue_description(bug,
                                                     'Text body',
@@ -106,7 +133,8 @@ def test_empty_see_also():
 
 def test_bz_see_also():
     bug_url = 'https://bugzilla.gnome.org/show_bug.cgi?id=792388'
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [bug_url])
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '',
+              None, None, [bug_url], None)
     user_cache = collections.defaultdict(lambda: None)
     description = template.render_issue_description(bug,
                                                     'Text body',
@@ -118,7 +146,8 @@ def test_bz_see_also():
 
 def test_bogus_see_also():
     bug_url = 'my hovercraft is full of eels'
-    bug = Bug(712869, 'geary-maint@gnome.bugs', '', None, None, [bug_url])
+    bug = Bug(712869, 'geary-maint@gnome.bugs', '',
+              None, None, [bug_url], None)
     user_cache = collections.defaultdict(lambda: None)
     description = template.render_issue_description(bug,
                                                     'Text body',

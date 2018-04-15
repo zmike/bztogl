@@ -132,6 +132,9 @@ def render_issue_description(
     else:
         body = text
 
+    if bug.version and bug.version not in ('master', 'unspecified'):
+        body += '\n\nVersion: {}'.format(bug.version)
+
     try:
         submitter = user_cache[bug.creator].display_name()
     except AttributeError:
