@@ -24,7 +24,7 @@ import urllib.parse
 import bugzilla
 import gitlab
 
-from . import common, template, users
+from . import common, milestones, template, users
 
 NEEDINFO_LABEL = "2. Needs Information"
 KEYWORD_MAP = {
@@ -36,7 +36,7 @@ KEYWORD_MAP = {
 GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
 
 
-def processbug(bgo, target, user_cache, bzbug):
+def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
     # bzbug.cc
     # bzbug.id
@@ -200,7 +200,13 @@ def processbug(bgo, target, user_cache, bzbug):
         if kw in KEYWORD_MAP:
             labels += [KEYWORD_MAP[kw]]
 
-    issue = target.create_issue(bzbug.id, bzbug.summary, description, labels,
+    milestone = None
+    bz_milestone = bzbug.target_milestone
+    if bz_milestone and bz_milestone != '---':
+        milestone = milestone_cache[bz_milestone]
+
+    issue = target.create_issue(bzbug.id, bzbug.summary, description,
+                                labels, milestone,
                                 str(bzbug.creation_time))
 
     # Assign bug to actual account if exists
@@ -342,6 +348,7 @@ def main():
 
     # There are products without Bugzilla tracking
     if len(bzbugs) != 0:
+        milestone_cache = milestones.MilestoneCache(target)
         user_cache = users.UserCache(target, bgo, args.product)
 
         # TODO: Check if there were bugs from this module already filed (i.e.
@@ -349,7 +356,7 @@ def main():
         for bzbug in bzbugs:
             count += 1
             sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
-            processbug(bgo, target, user_cache, bzbug)
+            processbug(bgo, target, user_cache, milestone_cache, bzbug)
 
     if os.path.exists('users_cache'):
         print('IMPORTANT: Remove the file \'users_cache\' after use, it \
