@@ -110,6 +110,27 @@ def processbug(bgo, target, user_cache, bzbug):
 
         return '\n\n'.join(converted_paragraphs)
 
+    def is_yorba_import(comment):
+        body = comment['text']
+        is_yorba = (
+            'Original URL: http://redmine.yorba.org/issues/' in body and
+            'Searchable id: yorba-bug-' in body
+        )
+        if is_yorba:
+            body = re.sub(r'####\n\n#', '---\n\nComment ', body)
+            body = re.sub(
+                r'\n(Original [a-zA-Z ]+: [a-zA-Z0-9.:\/ ]+)', r'\n\1  ', body
+            )
+            body = re.sub(
+                r'\n(Searchable id: [a-zA-Z0-9-]+)', r'\n\1  ', body
+            )
+            body = re.sub(r'\n(related to [a-zA-Z]+ - )', r'\n * \1', body)
+            body = re.sub(r'\n(duplicated by [a-zA-Z]+ - )', r'\n * \1', body)
+            body = re.sub(r'\n(blocked by [a-zA-Z]+ - )', r'\n * \1', body)
+            comment['text'] = body
+
+        return is_yorba
+
     def analyze_bugzilla_comment(comment, attachment_metadata):
         body = comment['text']
 
@@ -156,8 +177,9 @@ def processbug(bgo, target, user_cache, bzbug):
     comments = bzbug.getcomments()
 
     firstcomment = None if len(comments) < 1 else comments[0]
+    is_yorba = is_yorba_import(firstcomment)
     desctext = None
-    if firstcomment['author'] == bzbug.creator:
+    if firstcomment['author'] == bzbug.creator or is_yorba:
         desctext = firstcomment['text']
         if 'attachment_id' in firstcomment:
             desctext += '\n' + migrate_attachment(firstcomment,
