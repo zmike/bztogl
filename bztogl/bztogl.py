@@ -32,6 +32,26 @@ KEYWORD_MAP = {
     "newcomers": "4. Newcomers",
     "security": "1. Security"
 }
+COMPONENT_MAP = {
+    'Accessibility': '8. Accessibility',
+    'Backend: Broadway': 'Broadway',
+    'Backend: Quartz': 'MacOS',
+    'Backend: X11': 'X11',
+    'Backend: Wayland': 'Wayland',
+    'Backend: Win32': 'Windows',
+    'Documentation': '8. Developer Docs',
+    'Input Methods': 'Input',
+    'Language Bindings': 'Introspection',
+    'Themes': 'Theme',
+    'Widget: GtkComboBox': 'GtkComboBox',
+    'Widget: GtkEntry': 'GtkEntry',
+    'Widget: GtkFileChooser': '5. FileChooser',
+    'Widget: GtkFontChooser': 'GtkFontChooser',
+    'Widget: GtkMenu': 'GtkMenu',
+    'Widget: GtkNotebook': 'GtkNotebook',
+    'Widget: GtkScrolledWindow': 'GtkScrolledWindow',
+    'Widget: GtkSpinButton': 'GtkSpinButton',
+}
 
 GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
 
@@ -194,7 +214,11 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
         labels += [NEEDINFO_LABEL]
 
     if bzbug.component.lower() not in ('general', '.general'):
-        labels.append('5. {}'.format(bzbug.component.title()))
+        l = COMPONENT_MAP.get(bzbug.component, None)
+        if l is not None:
+            labels.append(l)
+        else:
+            labels.append('5. {}'.format(bzbug.component.title()))
 
     for kw in bzbug.keywords:
         if kw in KEYWORD_MAP:
