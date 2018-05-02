@@ -252,7 +252,12 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
 
         emoji, action, body = analyze_bugzilla_comment(comment,
                                                        attachment_metadata)
-        author = user_cache[comment['author']].display_name()
+
+        if user_cache[comment['author']] is not None:
+            author = user_cache[comment['author']].display_name()
+        else:
+            author = comment['author']
+
         gitlab_comment = template.render_comment(emoji, author, action, body,
                                                  comment_attachment)
 
