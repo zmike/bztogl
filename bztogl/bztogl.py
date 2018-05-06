@@ -86,10 +86,12 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
             index[atid] = at
         return index
 
-    def gitlab_upload_file(target, filename, f):
+    def gitlab_upload_file(target, filename, f, sudo=None):
         url = "{}api/v3/projects/{}/uploads".format(target.gl_url,
                                                     target.get_project().id)
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
+        if sudo:
+            target.gl.session.headers['sudo'] = '{}'.format(sudo)
         ret = target.gl.session.post(url, files={
             'file': (urllib.parse.quote(filename), f)
         })
@@ -100,10 +102,11 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     def migrate_attachment(comment, metadata):
         atid = comment['attachment_id']
 
+        author = user_cache[comment['author']]
         filename = metadata[atid]['file_name']
         print("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
-        ret = gitlab_upload_file(target, filename, attfile)
+        ret = gitlab_upload_file(target, filename, attfile, sudo=author.id)
 
         return template.render_attachment(atid, metadata[atid], ret)
 
@@ -228,9 +231,14 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     if bz_milestone and bz_milestone != '---':
         milestone = milestone_cache[bz_milestone]
 
+    if user_cache[bzbug.creator]:
+        sudo = user_cache[bzbug.creator].id
+    else:
+        sudo = None
     issue = target.create_issue(bzbug.id, bzbug.summary, description,
                                 labels, milestone,
-                                str(bzbug.creation_time))
+                                str(bzbug.creation_time),
+                                sudo=sudo)
 
     # Assign bug to actual account if exists
     assignee = user_cache[bzbug.assigned_to]
@@ -263,7 +271,7 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
         issue.notes.create({
             'body': gitlab_comment,
             'created_at': str(comment['creation_time'])
-        })
+        }, sudo=author.id)
 
     # Do last, so that previous actions don't all send an email
     for cc_email in itertools.chain(bzbug.cc, [bzbug.creator]):

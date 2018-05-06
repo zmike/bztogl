@@ -32,7 +32,7 @@ class GitLab:
         return self.gl.projects.get(self.target_project)
 
     def create_issue(self, id, summary, description, labels,
-                     milestone, creation_time):
+                     milestone, creation_time, sudo=None):
         payload = {
             'title': summary,
             'description': description,
@@ -43,7 +43,7 @@ class GitLab:
         if milestone:
             payload['milestone_id'] = milestone.id
 
-        return self.get_project().issues.create(payload)
+        return self.get_project().issues.create(payload, sudo=sudo)
 
     def get_all_users(self):
         if self.all_users is None:
