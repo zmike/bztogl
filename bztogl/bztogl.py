@@ -213,7 +213,7 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     if bzbug.status == 'NEEDINFO':
         labels += [NEEDINFO_LABEL]
 
-    if bzbug.component.lower() not in ('general', '.general'):
+    if bzbug.component.lower() not in ('general', '.general', target.product):
         l = COMPONENT_MAP.get(bzbug.component, None)
         if l is not None:
             labels.append(l)
