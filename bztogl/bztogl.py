@@ -102,7 +102,10 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     def migrate_attachment(comment, metadata):
         atid = comment['attachment_id']
 
-        author = user_cache[comment['author']]
+        if 'author' in comment:
+            author = user_cache[comment['author']]
+        else:
+            author = user_cache[comment['creator']]
         filename = metadata[atid]['file_name']
         print("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
@@ -201,7 +204,13 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     firstcomment = None if len(comments) < 1 else comments[0]
     is_yorba = is_yorba_import(firstcomment)
     desctext = None
-    if firstcomment['author'] == bzbug.creator or is_yorba:
+    if firstcomment and 'author' in firstcomment:
+        author = firstcomment['author']
+    elif firstcomment and 'creator' in firstcomment:
+        author = firstcomment['creator']
+    else:
+        author = None
+    if is_yorba or author == bzbug.creator:
         desctext = firstcomment['text']
         if 'attachment_id' in firstcomment:
             desctext += '\n' + migrate_attachment(firstcomment,
@@ -259,12 +268,16 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
 
         emoji, action, body = analyze_bugzilla_comment(comment,
                                                        attachment_metadata)
-
-        if user_cache[comment['author']] is not None:
-            author = user_cache[comment['author']].display_name()
+        if 'author' in comment:
+            if user_cache[comment['author']]:
+                author = user_cache[comment['author']].display_name()
+            else:
+                author = comment['author']
         else:
-            author = comment['author']
-
+            if user_cache[comment['creator']]:
+                author = user_cache[comment['creator']].display_name()
+            else:
+                author = comment['creator']
         gitlab_comment = template.render_comment(emoji, author, action, body,
                                                  comment_attachment)
 
