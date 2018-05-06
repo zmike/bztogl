@@ -319,6 +319,7 @@ def options():
     parser.add_argument('--token', help="gitlab token API", required=True)
     parser.add_argument('--product', help="bugzilla product name",
                         required=True)
+    parser.add_argument('--component', help="bugzilla component name")
     parser.add_argument('--bz-user', help="bugzilla username")
     parser.add_argument('--bz-password', help="bugzilla password")
     parser.add_argument('--target-project', metavar="USERNAME/PROJECT",
@@ -368,9 +369,14 @@ def main():
               "be closed and subscribers won't notice the migration")
         bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
 
-    query = bgo.build_query(product=args.product)
+    query = bgo.build_query(product=args.product, component=args.component)
+    if args.component:
+        print("Querying for open bugs for the '%s' product, '%s' component" %
+              (args.product, args.component))
+    else:
+        print("Querying for open bugs for the '%s' product, all components" %
+              args.product)
     query["status"] = "NEW ASSIGNED REOPENED NEEDINFO UNCONFIRMED".split()
-    print("Querying for open bugs for the '%s' product" % args.product)
     bzbugs = bgo.query(query)
     print("{} bugs found".format(len(bzbugs)))
     count = 0
