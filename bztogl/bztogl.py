@@ -32,6 +32,7 @@ KEYWORD_MAP = {
     "newcomers": "4. Newcomers",
     "security": "1. Security"
 }
+
 COMPONENT_MAP = {
     'Accessibility': '8. Accessibility',
     'Backend: Broadway': 'Broadway',
@@ -86,8 +87,8 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
         return index
 
     def gitlab_upload_file(target, filename, f):
-        url = (target.GITLABURL +
-               "api/v3/projects/{}/uploads".format(target.get_project().id))
+        url = "{}api/v3/projects/{}/uploads".format(target.gl_url,
+                                                    target.get_project().id)
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
         ret = target.gl.session.post(url, files={
             'file': (urllib.parse.quote(filename), f)
@@ -342,10 +343,14 @@ def check_if_target_project_exists(target):
 def main():
     args = options()
 
-    target = common.GitLab(args.token, args.product, args.target_project,
-                           args.automate)
     if args.production:
-        target.GITLABURL = "https://gitlab.gnome.org/"
+        glurl = "https://gitlab.gnome.org/"
+    else:
+        glurl = "https://gitlab-test.gnome.org/"
+    bzurl = "https://bugzilla.gnome.org/"
+    giturl = "https://git.gnome.org/browse/"
+    target = common.GitLab(glurl, giturl, args.token, args.product,
+                           args.target_project, args.automate)
 
     target.connect()
 
@@ -358,14 +363,13 @@ def main():
     if args.only_import:
         return
 
-    print("Connecting to bugzilla.gnome.org")
+    print("Connecting to %s" % bzurl)
     if args.bz_user and args.bz_password:
-        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org",
-                                args.bz_user, args.bz_password)
+        bgo = bugzilla.Bugzilla(bzurl, args.bz_user, args.bz_password)
     else:
         print("WARNING: Bugzilla credentials were not provided, BZ bugs won't "
               "be closed and subscribers won't notice the migration")
-        bgo = bugzilla.Bugzilla("https://bugzilla.gnome.org", tokenfile=None)
+        bgo = bugzilla.Bugzilla(bzurl, tokenfile=None)
 
     query = bgo.build_query(product=args.product, component=args.component)
     if args.component:

@@ -6,11 +6,11 @@ import gitlab
 
 
 class GitLab:
-    GITLABURL = "https://gitlab-test.gnome.org/"
-    GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
-
-    def __init__(self, token, product, target_project=None, automate=False):
+    def __init__(self, gitlab_url, git_url, token, product,
+                 target_project=None, automate=False):
         self.gl = None
+        self.gl_url = gitlab_url
+        self.git_url = git_url
         self.token = token
         self.product = product
         self.target_project = target_project
@@ -18,8 +18,8 @@ class GitLab:
         self.all_users = None
 
     def connect(self):
-        print("Connecting to %s" % self.GITLABURL)
-        self.gl = gitlab.Gitlab(self.GITLABURL, self.token, api_version=4)
+        print("Connecting to %s" % self.gl_url)
+        self.gl = gitlab.Gitlab(self.gl_url, self.token, api_version=4)
         self.gl.auth()
         # If not target project was given, set the project under the user
         # namespace
@@ -68,8 +68,7 @@ class GitLab:
             raise Exception("Could not remove project: {}".format(project))
 
     def get_import_status(self, project):
-        url = (self.GITLABURL +
-               "api/v4/projects/{}".format(project.id))
+        url = ("{}api/v4/projects/{}".format(self.gl_url, project.id))
         self.gl.session.headers = {"PRIVATE-TOKEN": self.token}
         ret = self.gl.session.get(url)
         if ret.status_code != 200:
@@ -79,7 +78,7 @@ class GitLab:
         return ret_json.get('import_status')
 
     def import_project(self):
-        import_url = self.GIT_ORIGIN_PREFIX + self.product
+        import_url = self.git_url + self.product
         print('Importing project from ' + import_url +
               ' to ' + self.target_project)
 
@@ -118,8 +117,8 @@ class GitLab:
             import_status = self.get_import_status(project)
 
     def upload_file(self, filename, f):
-        url = (self.GITLABURL +
-               "api/v3/projects/{}/uploads".format(self.get_project().id))
+        url = "{}api/v3/projects/{}/uploads".format(self.gl_url,
+                                                    self.get_project().id)
         self.gl.session.headers = {"PRIVATE-TOKEN": self.token}
         ret = self.gl.session.post(url, files={
             'file': (urllib.parse.quote(filename), f)
