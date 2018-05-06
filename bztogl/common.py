@@ -4,11 +4,10 @@ import urllib.parse
 
 import gitlab
 
-GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
-
 
 class GitLab:
     GITLABURL = "https://gitlab-test.gnome.org/"
+    GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
 
     def __init__(self, token, product, target_project=None, automate=False):
         self.gl = None
@@ -80,7 +79,7 @@ class GitLab:
         return ret_json.get('import_status')
 
     def import_project(self):
-        import_url = GIT_ORIGIN_PREFIX + self.product
+        import_url = self.GIT_ORIGIN_PREFIX + self.product
         print('Importing project from ' + import_url +
               ' to ' + self.target_project)
 

@@ -53,8 +53,6 @@ COMPONENT_MAP = {
     'Widget: GtkSpinButton': 'GtkSpinButton',
 }
 
-GIT_ORIGIN_PREFIX = 'https://git.gnome.org/browse/'
-
 
 def processbug(bgo, target, user_cache, milestone_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
