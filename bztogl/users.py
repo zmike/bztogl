@@ -30,8 +30,9 @@ class UserCache:
     def __getitem__(self, email):
         # Default assignees on GNOME projects don't correspond to a GitLab
         # user, and effectively mean unassigned
-        if email in self._default_emails:
-            return None
+        # Except fd.o doesn't use these.
+        # if email in self._default_emails:
+            # return None
 
         if email in self._users_cache:
             return self._users_cache[email]
