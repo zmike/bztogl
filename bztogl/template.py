@@ -33,21 +33,23 @@ ATTACHMENT_TEMPLATE = """  \n\
 
 MIGR_TEMPLATE = """-- GitLab Migration Automatic Message --
 
-This bug has been migrated to GNOME's GitLab instance and has been closed \
-from further activity.
+This bug has been migrated to {instance}'s GitLab instance and has been \
+closed from further activity.
 
 You can subscribe and participate further through the new bug through this \
-link to our GitLab instance: {}.
+link to our GitLab instance: {gitlab_url}.
 """
 
 
-def _bugzilla_url(bugid):
-    return 'https://bugzilla.gnome.org/show_bug.cgi?id={}'.format(bugid)
+def _bugzilla_url(instance_base, bugid):
+    url = '{instance_base}/show_bug.cgi?id={bugid}'
+    return url.format(instance_base=instance_base, bugid=bugid)
 
 
-def _autolink_markdown(text):
+def _autolink_markdown(instance_base, text):
     text = re.sub(r'([Bb]ug) ([0-9]+)',
-                  '[\\1 \\2]({})'.format(_bugzilla_url('\\2')), text)
+                  '[\\1 \\2]({})'.format(_bugzilla_url(instance_base, '\\2')),
+                                         text)
     # Prevent spurious links to other GitLab issues
     text = re.sub(r'([Cc]omment) #([0-9]+)', '\\1 \\2', text)
     # Quote stack traces as preformatted text
@@ -81,11 +83,12 @@ def _body_to_markdown_quote(body):
 
 
 def render_issue_description(
-        bug, text, user_cache,
-        importing_address="https://bugzilla.gnome.org/show_bug.cgi?id=",
+        instance_base, bug, text, user_cache, importing_address=None,
         bug_url_function=_bugzilla_url):
     if not text:
         text = ""
+    if not importing_address:
+        importing_address = "{}/show_bug.cgi?id=".format(instance_base)
 
     assigned_to = ""
     assignee = user_cache[bug.assigned_to]
@@ -96,14 +99,17 @@ def render_issue_description(
     if bug.depends_on:
         deps += "### Depends on\n"
         for bugid in bug.depends_on:
-            deps += "  * [Bug {}]({})\n".format(bugid, bug_url_function(bugid))
+            deps += "  * [Bug {}]({})\n".format(bugid,
+                                                bug_url_function(instance_base,
+                                                                 bugid))
 
     blocks = ""
     if bug.blocks:
         blocks += "### Blocking\n"
         for bugid in bug.blocks:
             blocks += "  * [Bug {}]({})\n".format(bugid,
-                                                  bug_url_function(bugid))
+                                                  bug_url_function(instance_base,
+                                                                   bugid))
 
     see_also = ""
     if bug.see_also:
@@ -117,6 +123,7 @@ def render_issue_description(
                 pass
             else:
                 ids = query.get('id', [])
+                # XXX
                 if bug_url.netloc == 'bugzilla.gnome.org' and ids:
                     is_bz = True
                     see_also += "  * [Bug {}]({})\n".format(ids[0], url)
@@ -128,7 +135,7 @@ def render_issue_description(
                                                 blocks=blocks,
                                                 see_also=see_also)
     if bug_url_function == _bugzilla_url:
-        body = _autolink_markdown(text)
+        body = _autolink_markdown(instance_base, text)
     else:
         body = text
 
@@ -147,15 +154,15 @@ def render_issue_description(
         dependencies=dependencies)
 
 
-def render_bugzilla_migration_comment(gl_issue):
-    return MIGR_TEMPLATE.format(gl_issue.web_url)
+def render_bugzilla_migration_comment(instance, gl_issue):
+    return MIGR_TEMPLATE.format(instance=instance, gitlab_url=gl_issue.web_url)
 
 
-def render_comment(emoji, author, action, body, attachment,
+def render_comment(instance_base, emoji, author, action, body, attachment,
                    bug_url_function=_bugzilla_url):
 
     if bug_url_function == _bugzilla_url and body:
-        body = _autolink_markdown(body)
+        body = _autolink_markdown(instance_base, body)
 
     body = _body_to_markdown_quote(body)
 

@@ -34,7 +34,8 @@ def test_update_content():
         54321: issue_dep,
     }
 
-    bztogl.update_content(bz, gl, user_cache, issues, issue, bug)
+    bztogl.update_content(bz, "https://bugzilla.gnome.org", gl, user_cache,
+                          issues, issue, bug)
     assert 'first comment' in issue.description
     assert '#{}'.format(issue_dep.iid) in issue.description
 
@@ -52,7 +53,7 @@ def test_close_bug():
     bug = Bug(12345, bz)
     issue = Issue()
 
-    bztogl.close_bug(bug, issue)
+    bztogl.close_bug("GNOME", bug, issue, "OBSOLETE")
 
 
 class Bugzilla:

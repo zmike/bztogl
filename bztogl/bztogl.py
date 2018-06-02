@@ -55,7 +55,8 @@ COMPONENT_MAP = {
 }
 
 
-def processbug(bgo, target, user_cache, milestone_cache, bzbug):
+def processbug(bgo, bzurl, instance, resolution, target, user_cache,
+               milestone_cache, bzbug):
     print("Processing bug #%d: %s" % (bzbug.id, bzbug.summary))
     # bzbug.cc
     # bzbug.id
@@ -218,7 +219,7 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
         comments = comments[1:]
 
     description = \
-        template.render_issue_description(bzbug, desctext, user_cache)
+        template.render_issue_description(bzurl, bzbug, desctext, user_cache)
 
     labels = ['bugzilla']
     if bzbug.status == 'NEEDINFO':
@@ -278,8 +279,8 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
                 author = user_cache[comment['creator']].display_name()
             else:
                 author = comment['creator']
-        gitlab_comment = template.render_comment(emoji, author, action, body,
-                                                 comment_attachment)
+        gitlab_comment = template.render_comment(bzurl, emoji, author, action,
+                                                 body, comment_attachment)
 
         issue.notes.create({
             'body': gitlab_comment,
@@ -316,9 +317,9 @@ def processbug(bgo, target, user_cache, milestone_cache, bzbug):
         print("Adding a comment in bugzilla and closing the bug there")
         # TODO: Create a resolution for this specific case? MIGRATED or FWDED?
         bz.update_bugs(bzbug.bug_id, bz.build_update(
-            comment=template.render_bugzilla_migration_comment(issue),
+            comment=template.render_bugzilla_migration_comment(instance, issue),
             status='RESOLVED',
-            resolution='OBSOLETE'))
+            resolution=resolution))
 
 
 def options():
@@ -346,6 +347,8 @@ def options():
                         help="project name for gitlab, like \
                               'username/project'. If not provided, \
                               $user_namespace/$bugzilla_product will be used")
+    parser.add_argument('--fdo', action='store_true',
+                        help="import for freedesktop.org rather than GNOME")
     return parser.parse_args()
 
 
@@ -364,12 +367,25 @@ def check_if_target_project_exists(target):
 def main():
     args = options()
 
-    if args.production:
-        glurl = "https://gitlab.gnome.org/"
+    if args.fdo:
+        if args.production:
+            glurl = "https://gitlab.freedesktop.org/"
+        else:
+            glurl = "http://localhost:8080/"
+        bzurl = "https://bugs.freedesktop.org"
+        giturl = "https://anongit.freedesktop.org/git/"
+        instance = "freedesktop.org"
+        bzresolution = 'MOVED'
     else:
-        glurl = "https://gitlab-test.gnome.org/"
-    bzurl = "https://bugzilla.gnome.org/"
-    giturl = "https://git.gnome.org/browse/"
+        if args.production:
+            glurl = "https://gitlab.gnome.org/"
+        else:
+            glurl = "https://gitlab-test.gnome.org/"
+        bzurl = "https://bugzilla.gnome.org"
+        giturl = "https://git.gnome.org/browse/"
+        instance = "GNOME"
+        bzresolution = 'OBSOLETE'
+
     target = common.GitLab(glurl, giturl, args.token, args.product,
                            args.target_project, args.automate)
 
@@ -414,7 +430,8 @@ def main():
         for bzbug in bzbugs:
             count += 1
             sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
-            processbug(bgo, target, user_cache, milestone_cache, bzbug)
+            processbug(bgo, bzurl, instance, bzresolution, target, user_cache,
+                       milestone_cache, bzbug)
 
     if os.path.exists('users_cache'):
         print('IMPORTANT: Remove the file \'users_cache\' after use, it \
