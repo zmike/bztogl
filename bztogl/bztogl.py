@@ -272,20 +272,24 @@ def processbug(bgo, bzurl, instance, resolution, target, user_cache,
         if 'author' in comment:
             if user_cache[comment['author']]:
                 author = user_cache[comment['author']].display_name()
+                sudo = user_cache[comment['author']].id
             else:
                 author = comment['author']
+                sudo = None
         else:
             if user_cache[comment['creator']]:
                 author = user_cache[comment['creator']].display_name()
+                sudo = user_cache[comment['creator']].id
             else:
                 author = comment['creator']
+                sudo = None
         gitlab_comment = template.render_comment(bzurl, emoji, author, action,
                                                  body, comment_attachment)
 
         issue.notes.create({
             'body': gitlab_comment,
             'created_at': str(comment['creation_time'])
-        }, sudo=author.id)
+        }, sudo=sudo)
 
     # Do last, so that previous actions don't all send an email
     for cc_email in itertools.chain(bzbug.cc, [bzbug.creator]):
