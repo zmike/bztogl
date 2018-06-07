@@ -25,7 +25,7 @@ KEYWORD_MAP = {
 
 MIGR_TEMPLATE = """# GitLab Migration Automatic Message
 
-This bug has been migrated to GNOME's GitLab instance and has been closed \
+This bug has been migrated to freedesltop.org's GitLab instance and has been closed \
 from further activity.
 
 You can subscribe and participate further through the new bug through this \
@@ -68,9 +68,10 @@ class Colors:
 class PhabGitLab(common.GitLab):
     """GitLab pabricator importer"""
 
-    def __init__(self, token, product, target_project=None,
+    def __init__(self, glurl, giturl, token, product, target_project=None,
                  automate=False, close_tasks=False):
-        super().__init__(token, product, target_project, automate)
+        super().__init__(glurl, giturl, token, product, target_project,
+                         automate)
         self.close_tasks = close_tasks
 
     def import_from_phab(self, phab, start_at):
@@ -87,7 +88,7 @@ class PhabGitLab(common.GitLab):
 
             description = \
                 template.render_issue_description(
-                    task, phab.escape_markdown(
+                    None, task, phab.escape_markdown(
                         task["description"]), phab.users,
                     importing_address=os.path.join(phab.phabricator_uri, "T"),
                     bug_url_function=phab.task_url)
@@ -107,29 +108,48 @@ class PhabGitLab(common.GitLab):
                 print("WARNING task %s doesn't have a title!" % _id)
                 continue
 
-            issue = self.create_issue(_id, task["title"],
-                                      description, labels,
-                                      datetime.datetime.fromtimestamp(
-                int(task["dateCreated"])
-            ).strftime('%Y-%m-%d %H:%M:%S')
-            )
-
-            print("Created %s - %s: %s" %
-                  (_id, issue.get_id(), issue.attributes['title']))
-
             # Assign bug to actual account if exists
+            phabauthor = phab.users.get(task["authorPHID"])
+            if phabauthor:
+                author = self.find_user_by_nick(phabauthor.username)
+                if author:
+                    author = author.id
+            else:
+                author = None
+
             phabowner = phab.users.get(task["ownerPHID"])
             if phabowner:
                 assignee = self.find_user_by_nick(phabowner.username)
-                if assignee:
-                    issue.assignee_id = assignee.id
+            else:
+                assignee = None
+
+            issue = self.create_issue(_id, task["title"],
+                                      description, labels,
+                                      None,
+                                      datetime.datetime.fromtimestamp(
+                int(task["dateCreated"])
+            ).strftime('%Y-%m-%d %H:%M:%S')#, sudo=author
+            )
+
+            if assignee:
+                issue.assignee_id = assignee.id
+
+            print("Created %s - %s: %s" %
+                  (_id, issue.get_id(), issue.attributes['title']))
 
             for comment in task.comments:
                 emoji, action, body = ('speech_balloon', 'said',
                                        comment["comments"])
                 author = phab.users[comment["authorPHID"]]
+                if phabowner:
+                    sudo = self.find_user_by_nick(author.username)
+                    if sudo:
+                        sudo = sudo.id
+                else:
+                    sudo = None
+                assignee = None
                 gitlab_comment = template.render_comment(
-                    emoji, author.display_name(),
+                    None, emoji, author.display_name(),
                     action, phab.escape_markdown(body),
                     "", bug_url_function=phab.task_url)
 
@@ -138,7 +158,7 @@ class PhabGitLab(common.GitLab):
                     'created_at': datetime.datetime.fromtimestamp(
                         int(task["dateCreated"])
                     ).strftime('%Y-%m-%d %H:%M:%S')
-                })
+                })#, sudo=sudo)
 
             state_event = 'reopen'
             if task.resolved:
@@ -162,8 +182,10 @@ class Task:
         self.projects = {}
         for phid in entry["projectPHIDs"]:
             self.projects[phid] = all_projects.data[phid]
-        self.depends_on = [all_tasks[phid]["id"]
-                           for phid in self.entry["dependsOnTaskPHIDs"]]
+        self.depends_on = []
+        for phid in self.entry["dependsOnTaskPHIDs"]:
+            if phid in all_tasks:
+                self.depends_on.append(all_tasks[phid]["id"])
 
     @property
     def assigned_to(self):
@@ -192,6 +214,14 @@ class Task:
     def blocks(self):
         # FIXME!
         return []
+
+    @property
+    def see_also(self):
+        return []
+
+    @property
+    def version(self):
+        return None
 
     def __getitem__(self, key):
         return self.entry[key]
@@ -244,7 +274,7 @@ class Phab:
 
         # Link Tasks and Differentials
         markdown = re.sub(
-            r'\b#?([TD][0-9]+)', '[\\1](%s/\\1)' % ("phaburi"),
+            r'\b#?([TD][0-9]+)', '[\\1](%s/\\1)' % ("https://phabricator.freedesktop.org"),
             markdown)
 
         # Avoid losing new lines.
@@ -274,7 +304,7 @@ class Phab:
 
         return markdown
 
-    def task_url(self, task_id):
+    def task_url(self, garbage, task_id):
         return os.path.join(self.phabricator_uri, "T" + task_id)
 
     def retrieve_all_comments(self, ids, users):
@@ -306,7 +336,7 @@ class Phab:
 
         self.tasks = {}
         users = set()
-        all_tasks = self.phabricator.maniphest.query(limit=9999999999)
+        all_tasks = self.phabricator.maniphest.query(limit=9999999999, status="status-open", projectPHIDs=self.project_phids)
         for task in all_tasks.items():
             for phid in task[1]['projectPHIDs']:
                 if phid in self.project_phids:
@@ -324,7 +354,7 @@ class Phab:
         self.retrieve_all_comments(ids, users)
 
     def ensure_project_phids(self):
-        self.all_projects = self.phabricator.project.query(limit=9999999999)
+        self.all_projects = self.phabricator.project.query(limit=9999999999, status="status-open")
 
         self.project_phids = []
         project_map = {}
@@ -465,11 +495,11 @@ def check_if_target_project_exists(target):
 def main():
     args = options()
 
-    target = PhabGitLab(args.token, args.projects[0], args.target_project,
+    target = PhabGitLab("https://gitlab.freedesktop.org/",
+                        "https://cgit.freedesktop.org/",
+                        args.token, args.projects[0],
+                        args.target_project,
                         args.automate, args.close_tasks)
-
-    if args.production:
-        target.GITLABURL = "https://gitlab.gnome.org/"
 
     target.connect()
     if not args.recreate and args.target_project is not None:

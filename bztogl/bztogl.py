@@ -91,8 +91,8 @@ def processbug(bgo, bzurl, instance, resolution, target, user_cache,
         url = "{}api/v3/projects/{}/uploads".format(target.gl_url,
                                                     target.get_project().id)
         target.gl.session.headers = {"PRIVATE-TOKEN": target.token}
-        if sudo:
-            target.gl.session.headers['sudo'] = '{}'.format(sudo)
+        #if sudo:
+            #target.gl.session.headers['sudo'] = '{}'.format(sudo)
         ret = target.gl.session.post(url, files={
             'file': (urllib.parse.quote(filename), f)
         })
@@ -110,7 +110,7 @@ def processbug(bgo, bzurl, instance, resolution, target, user_cache,
         filename = metadata[atid]['file_name']
         print("    Attachment {} found, migrating".format(filename))
         attfile = bgo.openattachment(atid)
-        ret = gitlab_upload_file(target, filename, attfile, sudo=author.id)
+        ret = gitlab_upload_file(target, filename, attfile)#, sudo=author.id)
 
         return template.render_attachment(atid, metadata[atid], ret)
 
@@ -247,8 +247,8 @@ def processbug(bgo, bzurl, instance, resolution, target, user_cache,
         sudo = None
     issue = target.create_issue(bzbug.id, bzbug.summary, description,
                                 labels, milestone,
-                                str(bzbug.creation_time),
-                                sudo=sudo)
+                                str(bzbug.creation_time))
+                                #sudo=sudo)
 
     # Assign bug to actual account if exists
     assignee = user_cache[bzbug.assigned_to]
@@ -289,7 +289,7 @@ def processbug(bgo, bzurl, instance, resolution, target, user_cache,
         issue.notes.create({
             'body': gitlab_comment,
             'created_at': str(comment['creation_time'])
-        }, sudo=sudo)
+        })#, sudo=sudo)
 
     # Do last, so that previous actions don't all send an email
     for cc_email in itertools.chain(bzbug.cc, [bzbug.creator]):
@@ -434,6 +434,9 @@ def main():
         for bzbug in bzbugs:
             count += 1
             sys.stdout.write('[{}/{}] '.format(count, len(bzbugs)))
+            #if bzbug.id == 106300:
+                #sys.stdout.write('    SKIPPED!')
+                #continue
             processbug(bgo, bzurl, instance, bzresolution, target, user_cache,
                        milestone_cache, bzbug)
 
