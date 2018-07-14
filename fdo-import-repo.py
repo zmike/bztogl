@@ -67,6 +67,13 @@ class Repo:
                "'GIT_DIR=%s git config --local receive.denynonfastforwards false && ln -s /srv/git.freedesktop.org/hooks/pre-receive-gitlab %s/hooks/pre-receive'" % (self.legacy_file_path(), self.legacy_file_path())] 
         subprocess.run(cmd, check=True)
 
+    def rollback_repo_kemper(self):
+        # Accept non-fast-forwards (to make a perfect mirror), and disable
+        # direct user pushes, as the only pushes will come from GitLab.
+        cmd = ["ssh", self.config.kemper_host, "sh", "-c",
+               "'GIT_DIR=%s git config --local receive.denynonfastforwards true && rm -f %s/hooks/pre-receive'" % (self.legacy_file_path(), self.legacy_file_path())] 
+        subprocess.run(cmd, check=True)
+
     def get_namespace_id(self):
         # Surely there has to be a cleaner way to do this ... ?
         namespace = self.url_gitlab.split('/')[:-1]
@@ -156,6 +163,7 @@ a copy of the repository list you imported.
             continue
 
         repo = Repo(config, url_fdo, url_gitlab)
+        repos.append(repo)
 
         try:
             repo.prepare_repo_kemper()
@@ -171,8 +179,6 @@ a copy of the repository list you imported.
             traceback.print_exc()
             continue
 
-        repos.append(repo)
-
     all_imported = False
     while not all_imported:
         time.sleep(2)
@@ -187,7 +193,17 @@ a copy of the repository list you imported.
     print("")
     print("")
     for repo in repos:
-        print("%s -> %s" % (repo.url_fdo, repo.url_gitlab))
+        if repo.project:
+            print("%s -> %s" % (repo.url_fdo, repo.url_gitlab))
+
+    print("")
+    print("")
+    print("")
+    print("FAILED MIGRATION:")
+    for repo in repos:
+        if not repo.project:
+            print("%s -> %s" % (repo.url_fdo, repo.url_gitlab))
+            repo.rollback_repo_kemper()
 
     print("")
     print("")
