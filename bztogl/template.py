@@ -9,7 +9,7 @@ from . import bt
 DESC_TEMPLATE = """## Submitted by {submitter}  \n\
 {assigned_to}
 **[Link to original bug (#{id})]\
-({link_url}{id})**  \n\
+({link_url})**  \n\
 ## Description
 {body}
 
@@ -91,7 +91,9 @@ def render_issue_description(
         importing_address = "{}/show_bug.cgi?id=".format(instance_base)
 
     assigned_to = ""
-    assignee = user_cache[bug.assigned_to]
+    assignee = None
+    if bug.assigned_to:
+      assignee = user_cache[bug.assigned_to]
     if assignee is not None:
         assigned_to = "Assigned to **{}**  \n".format(assignee.display_name())
 
@@ -142,10 +144,12 @@ def render_issue_description(
     if bug.version and bug.version not in ('master', 'unspecified'):
         body += '\n\nVersion: {}'.format(bug.version)
 
-    try:
-        submitter = user_cache[bug.creator].display_name()
-    except AttributeError:
-        submitter = 'an unknown user'
+    submitter = 'an unknown user'
+    if bug.creator in user_cache:
+        try:
+            submitter = user_cache[bug.creator].display_name()
+        except AttributeError:
+            pass
 
     return DESC_TEMPLATE.format(
         link_url=importing_address, submitter=submitter,
